@@ -130,7 +130,7 @@ const Data = {
 const dataModule = {
   namespaced: true,
   state: {
-    DB_PROCESSING_BATCH_SIZE: 1234,
+    DB_PROCESSING_BATCH_SIZE: 25,
     collections: {
       "1": {
         "0x0Ee24c748445Fb48028a74b0ccb6b46d7D3e3b33": {
@@ -911,29 +911,17 @@ const dataModule = {
 
       const parameter = { chainId, coinbase, blockNumber, confirmations, cryptoCompareAPIKey, ...options };
 
-      if (options.ensNames) {
+      if (options.ensNames && !options.devThing) {
         await context.dispatch('syncENSEvents', parameter);
       }
 
-      // if (options.collection) {
-      //   await context.dispatch('syncCollection', parameter);
-      // }
+      if (options.ensNames && !options.devThing) {
+        await context.dispatch('syncENSEventsData', parameter);
+      }
 
-      // if (options.collectionSales) {
-      //   await context.dispatch('syncCollectionSales', parameter);
-      // }
-
-      // if (options.collectionListings) {
-      //   await context.dispatch('syncCollectionListings', parameter);
-      // }
-
-      // if (options.collectionOffers) {
-      //   await context.dispatch('syncCollectionOffers', parameter);
-      // }
-
-      // if (options.devThing || options.collection || options.collectionSales || options.collectionListings || options.collectionOffers) {
-      //   await context.dispatch('collateIt', parameter);
-      // }
+      if (options.devThing || options.ensNames) {
+        await context.dispatch('collateIt', parameter);
+      }
 
       // if (options.ens) {
       //   await context.dispatch('syncENS', parameter);
@@ -1047,6 +1035,8 @@ const dataModule = {
                 contract,
                 ...eventRecord,
                 confirmations: parameter.blockNumber - log.blockNumber,
+                timestamp: null,
+                tx: null,
               });
             }
           }
@@ -1112,345 +1102,68 @@ const dataModule = {
       logInfo("dataModule", "actions.syncENSEvents END");
     },
 
-
-    async syncCollection(context, parameter) {
-      logInfo("dataModule", "actions.syncCollection BEGIN: " + JSON.stringify(parameter));
+    async syncENSEventsData(context, parameter) {
+      logInfo("dataModule", "actions.syncENSEventsData: " + JSON.stringify(parameter));
       const db = new Dexie(context.state.db.name);
       db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
       const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-      context.commit('setSyncSection', { section: "Collection", total: null });
       let total = 0;
-      let continuation = null;
+      let done = false;
       do {
-        let url = "https://api.reservoir.tools/tokens/v7?contract=" + context.state.selectedCollection + "&sortBy=updatedAt&limit=1000&includeAttributes=true&includeLastSale=true" +
-          (continuation != null ? "&continuation=" + continuation : '');
-        console.log("url: " + url);
-        const data = await fetch(url)
-          .then(handleErrors)
-          .then(response => response.json())
-          .catch(function(error) {
-             console.log("ERROR - updateCollection: " + error);
-             // state.sync.error = true;
-             return [];
-          });
-        if (!parameter.devThing) {
-          continuation = data.continuation;
-        }
-        if (data && data.tokens) {
-          const records = [];
-          for (const tokenData of data.tokens) {
-            const token = tokenData.token;
-            if (token.tokenId == 1704) {
-              console.log("token: " + JSON.stringify(token, null, 2));
-            }
-            const owner = token.owner;
-            const attributes = token.attributes.map(e => ({ trait_type: e.key, value: e.value }));
-            attributes.sort((a, b) => {
-              return ('' + a.trait_type).localeCompare(b.trait_type);
-            });
-            records.push({
-              chainId: parameter.chainId,
-              contract: ethers.utils.getAddress(token.contract),
-              tokenId: token.tokenId,
-              name: token.name,
-              description: token.description,
-              image: token.image,
-              kind: token.kind,
-              isFlagged: token.isFlagged,
-              isSpam: token.isSpam,
-              isNsfw: token.isNsfw,
-              metadataDisabled: token.metadataDisabled,
-              rarity: token.rarity,
-              rarityRank: token.rarityRank,
-              collection: {
-                id: token.collection.id,
-                name: token.collection.name,
-                image: token.collection.image,
-                slug: token.collection.slug,
-                creator: ethers.utils.getAddress(token.collection.creator),
-                tokenCount: token.collection.tokenCount,
-              },
-              attributes,
-              owner: ethers.utils.getAddress(token.owner),
-            });
-          }
-          if (records.length) {
-            await db.tokens.bulkPut(records).then (function(lastKey) {
-              console.log("syncCollection.bulkPut - items: " + records.length + ", lastKey: " + JSON.stringify(lastKey));
-            }).catch(Dexie.BulkError, function(e) {
-              console.log("syncCollection.bulkPut e: " + JSON.stringify(e.failures, null, 2));
-            });
-          }
-          total = parseInt(total) + records.length;
-          context.commit('setSyncCompleted', total);
-        }
-        await delay(2500); // TODO: Adjust to avoid error 429 Too Many Requests. Fails at 200ms
-      } while (continuation != null /*&& !state.halt && !state.sync.error */);
-    },
-
-    async syncCollectionSales(context, parameter) {
-      logInfo("dataModule", "actions.syncCollectionSales BEGIN: " + JSON.stringify(parameter));
-      const db = new Dexie(context.state.db.name);
-      db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-      context.commit('setSyncSection', { section: "Sales", total: null });
-
-      let total = 0;
-      let continuation = null;
+        let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(total).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+        logInfo("dataModule", "actions.syncENSEventsData - data.length: " + data.length + ", first[0..9]: " + JSON.stringify(data.slice(0, 10).map(e => e.blockNumber + '.' + e.logIndex )));
+        total = parseInt(total) + data.length;
+        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      } while (!done);
+      logInfo("dataModule", "actions.syncENSEventsData - total: " + total);
+      context.commit('setSyncSection', { section: 'Stealth Transfer Data', total });
+      let rows = 0;
       do {
-        let url = "https://api.reservoir.tools/sales/v6?collection=" + context.state.selectedCollection + "&limit=1000" +
-          (continuation != null ? "&continuation=" + continuation : '');
-        console.log("url: " + url);
-        const data = await fetch(url)
-          .then(handleErrors)
-          .then(response => response.json())
-          .catch(function(error) {
-             console.log("ERROR - updateCollection: " + error);
-             // state.sync.error = true;
-             return [];
+        let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+        logInfo("dataModule", "actions.syncENSEventsData - data.length: " + data.length + ", first[0..9]: " + JSON.stringify(data.slice(0, 10).map(e => e.blockNumber + '.' + e.logIndex )));
+        const records = [];
+        for (const item of data) {
+          if (item.timestamp == null) {
+            const block = await provider.getBlock(item.blockNumber);
+            item.timestamp = block.timestamp;
+            const tx = await provider.getTransaction(item.txHash);
+            const txReceipt = await provider.getTransactionReceipt(item.txHash);
+            item.tx = {
+              type: tx.type,
+              blockHash: tx.blockHash,
+              from: tx.from,
+              gasPrice: ethers.BigNumber.from(tx.gasPrice).toString(),
+              gasLimit: ethers.BigNumber.from(tx.gasLimit).toString(),
+              to: tx.to,
+              value: ethers.BigNumber.from(tx.value).toString(),
+              nonce: tx.nonce,
+              data: tx.to && tx.data || null, // Remove contract creation data to reduce memory footprint
+              chainId: tx.chainId,
+              contractAddress: txReceipt.contractAddress,
+              transactionIndex: txReceipt.transactionIndex,
+              gasUsed: ethers.BigNumber.from(txReceipt.gasUsed).toString(),
+              blockHash: txReceipt.blockHash,
+              logs: txReceipt.logs,
+              cumulativeGasUsed: ethers.BigNumber.from(txReceipt.cumulativeGasUsed).toString(),
+              effectiveGasPrice: ethers.BigNumber.from(txReceipt.effectiveGasPrice).toString(),
+              status: txReceipt.status,
+              type: txReceipt.type,
+            };
+            records.push(item);
+          }
+          rows++;
+          context.commit('setSyncCompleted', rows);
+        }
+        if (records.length > 0) {
+          await db.tokenEvents.bulkPut(records).then (function() {
+          }).catch(function(error) {
+            console.log("syncENSEventsData.bulkPut error: " + error);
           });
-        if (!parameter.devThing) {
-          continuation = data.continuation;
         }
-        if (data && data.sales) {
-          const records = [];
-          for (const sale of data.sales) {
-            const feeBreakdown = [];
-            for (const d of (sale.feeBreakdown || [])) {
-              feeBreakdown.push({
-                kind: d.kind,
-                bps: d.bps,
-                rawAmount: d.rawAmount,
-                recipient: ethers.utils.getAddress(d.recipient),
-                source: d.source,
+        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      } while (!done && !context.state.halt);
 
-              });
-            }
-            const price = sale.price;
-            if (price && price.currency && price.currency.contract) {
-              price.currency.contract = ethers.utils.getAddress(price.currency.contract);
-            }
-            records.push({
-              chainId: parameter.chainId,
-              contract: ethers.utils.getAddress(sale.token.contract),
-              tokenId: sale.token.tokenId,
-              blockNumber: sale.block,
-              confirmations: parameter.blockNumber - sale.block,
-              logIndex: sale.logIndex,
-              timestamp: sale.timestamp,
-              txHash: sale.txHash,
-              amount: sale.amount,
-              batchIndex: sale.batchIndex,
-              createdAt: moment(sale.createdAt).unix(),
-              feeBreakdown,
-              fillSource: sale.fillSource,
-              from: ethers.utils.getAddress(sale.from),
-              id: sale.id,
-              isDeleted: sale.isDeleted,
-              amount: sale.amount,
-              to: ethers.utils.getAddress(sale.to),
-              marketplaceFeeBps: sale.marketplaceFeeBps,
-              orderId: sale.orderId,
-              orderKind: sale.orderKind,
-              orderSide: sale.orderSide,
-              orderSource: sale.orderSource,
-              paidFullRoyalty: sale.paidFullRoyalty,
-              price,
-              saleId: sale.saleId,
-              updatedAt: moment(sale.updatedAt).unix(),
-              washTradingScore: sale.washTradingScore,
-            });
-          }
-          if (records.length) {
-            await db.sales.bulkPut(records).then (function(lastKey) {
-              console.log("syncCollectionSales.bulkPut - items: " + records.length + ", lastKey: " + JSON.stringify(lastKey));
-            }).catch(Dexie.BulkError, function(e) {
-              console.log("syncCollectionSales.bulkPut e: " + JSON.stringify(e.failures, null, 2));
-            });
-          }
-          total = parseInt(total) + records.length;
-          context.commit('setSyncCompleted', total);
-        }
-        await delay(2500); // TODO: Adjust to avoid error 429 Too Many Requests. Fails at 200ms
-      } while (continuation != null /*&& !state.halt && !state.sync.error */);
-    },
-
-    async syncCollectionListings(context, parameter) {
-      logInfo("dataModule", "actions.syncCollectionListings BEGIN: " + JSON.stringify(parameter));
-      const db = new Dexie(context.state.db.name);
-      db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-      const deleteCount = await db.listings.where('[chainId+contract+id]').between([parameter.chainId, context.state.selectedCollection, Dexie.minKey],[parameter.chainId, context.state.selectedCollection, Dexie.maxKey]).delete();
-      logInfo("dataModule", "actions.syncCollectionListings - deleteCount: " + deleteCount);
-
-      context.commit('setSyncSection', { section: "Listings", total: null });
-
-      let total = 0;
-      let continuation = null;
-      do {
-        let url = "https://api.reservoir.tools/orders/asks/v5?contracts=" + context.state.selectedCollection + "&limit=1000" +
-          (continuation != null ? "&continuation=" + continuation : '');
-        console.log("url: " + url);
-        const data = await fetch(url)
-          .then(handleErrors)
-          .then(response => response.json())
-          .catch(function(error) {
-             console.log("ERROR - updateCollection: " + error);
-             // state.sync.error = true;
-             return [];
-          });
-        if (!parameter.devThing) {
-          continuation = data.continuation;
-        }
-        if (data && data.orders) {
-          const records = [];
-          for (const order of data.orders) {
-            // console.log("order: " + JSON.stringify(order, null, 2));
-            const feeBreakdown = [];
-            for (const d of (order.feeBreakdown || [])) {
-              feeBreakdown.push({
-                kind: d.kind,
-                bps: d.bps,
-                recipient: ethers.utils.getAddress(d.recipient),
-              });
-            }
-            const price = order.price;
-            if (price && price.currency && price.currency.contract) {
-              price.currency.contract = ethers.utils.getAddress(price.currency.contract);
-            }
-            records.push({
-              chainId: parameter.chainId,
-
-              id: order.id,
-              kind: order.kind,
-              side: order.side,
-              status: order.status,
-              tokenSetId: order.tokenSetId,
-              tokenSetSchemaHash: order.tokenSetSchemaHash,
-              contract: ethers.utils.getAddress(order.contract),
-              contractKind: order.contractKind,
-              maker: ethers.utils.getAddress(order.maker),
-              taker: ethers.utils.getAddress(order.taker),
-              price,
-              validFrom: order.validFrom,
-              validUntil: order.validUntil,
-              quantityFilled: order.quantityFilled,
-              quantityRemaining: order.quantityRemaining,
-              dynamicPricing: order.dynamicPricing,
-              criteria: order.criteria,
-              source: order.source,
-              feeBps: order.feeBps,
-              feeBreakdown,
-              expiration: order.expiration,
-              isReservoir: order.isReservoir,
-              isDynamic: order.isDynamic,
-              createdAt: moment(order.createdAt).unix(),
-              updatedAt: moment(order.updatedAt).unix(),
-              originatedAt: moment(order.originatedAt).unix(),
-            });
-          }
-          if (records.length) {
-            await db.listings.bulkPut(records).then (function(lastKey) {
-              console.log("syncCollectionListings.bulkPut - items: " + records.length + ", lastKey: " + JSON.stringify(lastKey));
-            }).catch(Dexie.BulkError, function(e) {
-              console.log("syncCollectionListings.bulkPut e: " + JSON.stringify(e.failures, null, 2));
-            });
-          }
-          total = parseInt(total) + records.length;
-          context.commit('setSyncCompleted', total);
-        }
-        await delay(2500); // TODO: Adjust to avoid error 429 Too Many Requests. Fails at 200ms
-      } while (continuation != null /*&& !state.halt && !state.sync.error */);
-    },
-
-    async syncCollectionOffers(context, parameter) {
-      logInfo("dataModule", "actions.syncCollectionOffers BEGIN: " + JSON.stringify(parameter));
-      const db = new Dexie(context.state.db.name);
-      db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-      const deleteCount = await db.offers.where('[chainId+contract+id]').between([parameter.chainId, context.state.selectedCollection, Dexie.minKey],[parameter.chainId, context.state.selectedCollection, Dexie.maxKey]).delete();
-      logInfo("dataModule", "actions.syncCollectionOffers - deleteCount: " + deleteCount);
-
-      context.commit('setSyncSection', { section: "Offers", total: null });
-
-      let total = 0;
-      let continuation = null;
-      do {
-        let url = "https://api.reservoir.tools/orders/bids/v6?collection=" + context.state.selectedCollection + "&limit=1000" +
-          (continuation != null ? "&continuation=" + continuation : '');
-        console.log("url: " + url);
-        const data = await fetch(url)
-          .then(handleErrors)
-          .then(response => response.json())
-          .catch(function(error) {
-             console.log("ERROR - updateCollection: " + error);
-             // state.sync.error = true;
-             return [];
-          });
-        if (!parameter.devThing) {
-          continuation = data.continuation;
-        }
-        // console.log("data: " + JSON.stringify(data, null, 2));
-        if (data && data.orders) {
-          const records = [];
-          for (const order of data.orders) {
-            // console.log("order: " + JSON.stringify(order, null, 2));
-            const feeBreakdown = [];
-            for (const d of (order.feeBreakdown || [])) {
-              feeBreakdown.push({
-                kind: d.kind,
-                bps: d.bps,
-                recipient: ethers.utils.getAddress(d.recipient),
-              });
-            }
-            const price = order.price;
-            if (price && price.currency && price.currency.contract) {
-              price.currency.contract = ethers.utils.getAddress(price.currency.contract);
-            }
-            records.push({
-              chainId: parameter.chainId,
-              id: order.id,
-              kind: order.kind,
-              side: order.side,
-              status: order.status,
-              tokenSetId: order.tokenSetId,
-              tokenSetSchemaHash: order.tokenSetSchemaHash,
-              contract: ethers.utils.getAddress(order.contract),
-              contractKind: order.contractKind,
-              maker: ethers.utils.getAddress(order.maker),
-              taker: ethers.utils.getAddress(order.taker),
-              price,
-              validFrom: order.validFrom,
-              validUntil: order.validUntil,
-              quantityFilled: order.quantityFilled,
-              quantityRemaining: order.quantityRemaining,
-              criteria: order.criteria,
-              source: order.source,
-              feeBps: order.feeBps,
-              feeBreakdown,
-              expiration: order.expiration,
-              isReservoir: order.isReservoir,
-              createdAt: moment(order.createdAt).unix(),
-              updatedAt: moment(order.updatedAt).unix(),
-              originatedAt: moment(order.originatedAt).unix(),
-            });
-          }
-          if (records.length) {
-            await db.offers.bulkPut(records).then (function(lastKey) {
-              console.log("syncCollectionOffers.bulkPut - items: " + records.length + ", lastKey: " + JSON.stringify(lastKey));
-            }).catch(Dexie.BulkError, function(e) {
-              console.log("syncCollectionOffers.bulkPut e: " + JSON.stringify(e.failures, null, 2));
-            });
-          }
-          total = parseInt(total) + records.length;
-          context.commit('setSyncCompleted', total);
-        }
-        await delay(2500); // TODO: Adjust to avoid error 429 Too Many Requests. Fails at 200ms
-      } while (continuation != null /*&& !state.halt && !state.sync.error */);
+      logInfo("dataModule", "actions.syncENSEventsData END");
     },
 
     async collateIt(context, parameter) {
@@ -1462,130 +1175,147 @@ const dataModule = {
       let rows = 0;
       let done = false;
 
-      let collection = null;
-      // const tokens = {};
-      const owners = {};
-      const collator = {};
-      do {
-        let data = await db.tokens.where('[chainId+contract+tokenId]').between([parameter.chainId, context.state.selectedCollection, Dexie.minKey],[parameter.chainId, context.state.selectedCollection, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
-        logInfo("dataModule", "actions.collateIt - tokens - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.contract + '/' + e.tokenId )));
-        for (const token of data) {
-          for (const attribute of token.attributes) {
-            if (!collator[attribute.trait_type]) {
-              collator[attribute.trait_type] = {};
-            }
-            if (!collator[attribute.trait_type][attribute.value]) {
-              collator[attribute.trait_type][attribute.value] = [token.tokenId];
-            } else {
-              collator[attribute.trait_type][attribute.value].push(token.tokenId);
-            }
-          }
-          if (collection == null) {
-            collection = {
-              contract: token.contract,
-              id: token.collection.id,
-              name: token.collection.name,
-              image: token.collection.image,
-              slug: token.collection.slug,
-              creator: token.collection.creator,
-              tokenCount: token.collection.tokenCount,
-            };
-          }
-          context.commit('addOrUpdateToken', {
-            chainId: token.chainId,
-            contract: token.contract,
-            tokenId: token.tokenId,
-            name: token.name,
-            description: token.description,
-            image: token.image,
-            kind: token.kind,
-            isFlagged: token.isFlagged,
-            isSpam: token.isSpam,
-            isNsfw: token.isNsfw,
-            metadataDisabled: token.metadataDisabled,
-            rarity: token.rarity,
-            rarityRank: token.rarityRank,
-            attributes: token.attributes,
-            owner: token.owner,
-            tags: [],
-          });
-          if (!(token.owner in owners)) {
-            owners[token.owner] = [];
-          }
-          owners[token.owner].push(token.tokenId);
-        }
-        rows = parseInt(rows) + data.length;
-        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
-      } while (!done);
-      context.commit('setCollection', collection);
-      // context.commit('setTokens', tokens);
-
-      const attributes = [];
-      for (const [attributeType, attributeData] of Object.entries(collator)) {
-        const attributeList = [];
-        for (const [attribute, tokenIds] of Object.entries(attributeData)) {
-          attributeList.push({ attribute, tokenIds });
-        }
-        attributeList.sort((a, b) => a.tokenIds.length - b.tokenIds.length);
-        attributes.push({ attributeType, attributeList });
-      }
-      attributes.sort((a, b) => ('' + a.attributeType).localeCompare(b.attributeType))
-      context.commit('setAttributes', attributes);
-
-      // TODO: Only sort numerically if all tokenIds <= 5 characters
-      const ownerList = Object.keys(owners);
-      for (const owner of ownerList) {
-        const tokenIds = owners[owner];
-        tokenIds.sort((a, b) => {
-          return parseInt(a) - parseInt(b);
-        });
-        owners[owner] = tokenIds;
-      }
-      context.commit('setOwners', owners);
 
       rows = 0;
       done = false;
-      const sales = [];
+      // const sales = [];
       do {
-        let data = await db.sales.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+        let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
         logInfo("dataModule", "actions.collateIt - sales - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.blockNumber + '.' + e.logIndex )));
         for (const item of data) {
-          sales.push(item);
+          console.log(JSON.stringify(item));
+          // sales.push(item);
         }
         rows = parseInt(rows) + data.length;
-        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE || rows >= 30;
       } while (!done);
-      context.commit('setSales', sales);
+      // context.commit('setSales', sales);
 
-      rows = 0;
-      done = false;
-      const listings = [];
-      do {
-        let data = await db.listings.where('[chainId+contract+id]').between([parameter.chainId, context.state.selectedCollection, Dexie.minKey],[parameter.chainId, context.state.selectedCollection, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
-        logInfo("dataModule", "actions.collateIt - listings - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.contract + '.' + e.id )));
-        for (const item of data) {
-          listings.push(item);
-        }
-        rows = parseInt(rows) + data.length;
-        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
-      } while (!done);
-      context.commit('setListings', listings);
 
-      rows = 0;
-      done = false;
-      const offers = [];
-      do {
-        let data = await db.offers.where('[chainId+contract+id]').between([parameter.chainId, context.state.selectedCollection, Dexie.minKey],[parameter.chainId, context.state.selectedCollection, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
-        logInfo("dataModule", "actions.collateIt - offers - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.contract + '.' + e.id )));
-        for (const item of data) {
-          offers.push(item);
-        }
-        rows = parseInt(rows) + data.length;
-        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
-      } while (!done);
-      context.commit('setOffers', offers);
-
-      await context.dispatch('saveData', ['collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers']);
+      // let collection = null;
+      // // const tokens = {};
+      // const owners = {};
+      // const collator = {};
+      // do {
+      //   let data = await db.tokens.where('[chainId+contract+tokenId]').between([parameter.chainId, context.state.selectedCollection, Dexie.minKey],[parameter.chainId, context.state.selectedCollection, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+      //   logInfo("dataModule", "actions.collateIt - tokens - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.contract + '/' + e.tokenId )));
+      //   for (const token of data) {
+      //     for (const attribute of token.attributes) {
+      //       if (!collator[attribute.trait_type]) {
+      //         collator[attribute.trait_type] = {};
+      //       }
+      //       if (!collator[attribute.trait_type][attribute.value]) {
+      //         collator[attribute.trait_type][attribute.value] = [token.tokenId];
+      //       } else {
+      //         collator[attribute.trait_type][attribute.value].push(token.tokenId);
+      //       }
+      //     }
+      //     if (collection == null) {
+      //       collection = {
+      //         contract: token.contract,
+      //         id: token.collection.id,
+      //         name: token.collection.name,
+      //         image: token.collection.image,
+      //         slug: token.collection.slug,
+      //         creator: token.collection.creator,
+      //         tokenCount: token.collection.tokenCount,
+      //       };
+      //     }
+      //     context.commit('addOrUpdateToken', {
+      //       chainId: token.chainId,
+      //       contract: token.contract,
+      //       tokenId: token.tokenId,
+      //       name: token.name,
+      //       description: token.description,
+      //       image: token.image,
+      //       kind: token.kind,
+      //       isFlagged: token.isFlagged,
+      //       isSpam: token.isSpam,
+      //       isNsfw: token.isNsfw,
+      //       metadataDisabled: token.metadataDisabled,
+      //       rarity: token.rarity,
+      //       rarityRank: token.rarityRank,
+      //       attributes: token.attributes,
+      //       owner: token.owner,
+      //       tags: [],
+      //     });
+      //     if (!(token.owner in owners)) {
+      //       owners[token.owner] = [];
+      //     }
+      //     owners[token.owner].push(token.tokenId);
+      //   }
+      //   rows = parseInt(rows) + data.length;
+      //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      // } while (!done);
+      // context.commit('setCollection', collection);
+      // // context.commit('setTokens', tokens);
+      //
+      // const attributes = [];
+      // for (const [attributeType, attributeData] of Object.entries(collator)) {
+      //   const attributeList = [];
+      //   for (const [attribute, tokenIds] of Object.entries(attributeData)) {
+      //     attributeList.push({ attribute, tokenIds });
+      //   }
+      //   attributeList.sort((a, b) => a.tokenIds.length - b.tokenIds.length);
+      //   attributes.push({ attributeType, attributeList });
+      // }
+      // attributes.sort((a, b) => ('' + a.attributeType).localeCompare(b.attributeType))
+      // context.commit('setAttributes', attributes);
+      //
+      // // TODO: Only sort numerically if all tokenIds <= 5 characters
+      // const ownerList = Object.keys(owners);
+      // for (const owner of ownerList) {
+      //   const tokenIds = owners[owner];
+      //   tokenIds.sort((a, b) => {
+      //     return parseInt(a) - parseInt(b);
+      //   });
+      //   owners[owner] = tokenIds;
+      // }
+      // context.commit('setOwners', owners);
+      //
+      // rows = 0;
+      // done = false;
+      // const sales = [];
+      // do {
+      //   let data = await db.sales.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+      //   logInfo("dataModule", "actions.collateIt - sales - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.blockNumber + '.' + e.logIndex )));
+      //   for (const item of data) {
+      //     sales.push(item);
+      //   }
+      //   rows = parseInt(rows) + data.length;
+      //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      // } while (!done);
+      // context.commit('setSales', sales);
+      //
+      // rows = 0;
+      // done = false;
+      // const listings = [];
+      // do {
+      //   let data = await db.listings.where('[chainId+contract+id]').between([parameter.chainId, context.state.selectedCollection, Dexie.minKey],[parameter.chainId, context.state.selectedCollection, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+      //   logInfo("dataModule", "actions.collateIt - listings - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.contract + '.' + e.id )));
+      //   for (const item of data) {
+      //     listings.push(item);
+      //   }
+      //   rows = parseInt(rows) + data.length;
+      //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      // } while (!done);
+      // context.commit('setListings', listings);
+      //
+      // rows = 0;
+      // done = false;
+      // const offers = [];
+      // do {
+      //   let data = await db.offers.where('[chainId+contract+id]').between([parameter.chainId, context.state.selectedCollection, Dexie.minKey],[parameter.chainId, context.state.selectedCollection, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+      //   logInfo("dataModule", "actions.collateIt - offers - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.contract + '.' + e.id )));
+      //   for (const item of data) {
+      //     offers.push(item);
+      //   }
+      //   rows = parseInt(rows) + data.length;
+      //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      // } while (!done);
+      // context.commit('setOffers', offers);
+      //
+      // await context.dispatch('saveData', ['collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers']);
       logInfo("dataModule", "actions.collateIt END");
     },
 
