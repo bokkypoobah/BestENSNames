@@ -428,29 +428,33 @@ const dataModule = {
       }
       if (!(transfer.tokenId in state.tokens[transfer.chainId][transfer.contract])) {
         Vue.set(state.tokens[transfer.chainId][transfer.contract], transfer.tokenId, {
+          name: null,
+          description: null,
+          expiry: null,
+          attributes: {},
+          imageSource: null,
+          image: null,
           owner: transfer.to,
-          blockNumber: transfer.blockNumber,
-          logIndex: transfer.logIndex,
           history: [{
             blockNumber: transfer.blockNumber,
             logIndex: transfer.logIndex,
+            timestamp: transfer.timestamp,
             from: transfer.from,
             to: transfer.to,
           }],
         });
       } else {
-        const lastBlockNumber = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].blockNumber;
-        const lastLogIndex = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].logIndex;
+        const history = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].history;
+        const lastBlockNumber = history[history.length - 1].blockNumber;
+        const lastLogIndex = history[history.length - 1].logIndex;
         if ((transfer.blockNumber > lastBlockNumber)  || ((transfer.blockNumber == lastBlockNumber) && (transfer.logInfo > lastLogIndex))) {
-          console.log("lastBlockNumber: " + lastBlockNumber + " vs blockNumber: " + transfer.blockNumber);
-          console.log("lastLogIndex: " + lastLogIndex + " vs logIndex: " + transfer.logIndex);
+          // console.log("lastBlockNumber: " + lastBlockNumber + " vs blockNumber: " + transfer.blockNumber);
+          // console.log("lastLogIndex: " + lastLogIndex + " vs logIndex: " + transfer.logIndex);
           Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'owner', transfer.to);
-          Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'blockNumber', transfer.blockNumber);
-          Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'logIndex', transfer.logIndex);
-          const history = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].history;
           history.push({
             blockNumber: transfer.blockNumber,
             logIndex: transfer.logIndex,
+            timestamp: transfer.timestamp,
             from: transfer.from,
             to: transfer.to,
           });
@@ -775,10 +779,10 @@ const dataModule = {
       if (Object.keys(context.state.stealthTransfers).length == 0) {
         const db0 = new Dexie(context.state.db.name);
         db0.version(context.state.db.version).stores(context.state.db.schemaDefinition);
-        for (let type of ['addresses' /*, 'attributeFilter', 'selectedCollection', 'idFilter', 'ownerFilter', 'collections', 'showSideFilter', 'collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers', 'ens' */]) {
+        for (let type of ['addresses', 'tokens' /*, 'attributeFilter', 'selectedCollection', 'idFilter', 'ownerFilter', 'collections', 'showSideFilter', 'collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers', 'ens' */]) {
           const data = await db0.cache.where("objectName").equals(type).toArray();
           if (data.length == 1) {
-            // logInfo("dataModule", "actions.restoreState " + type + " => " + JSON.stringify(data[0].object));
+            logInfo("dataModule", "actions.restoreState " + type + " => " + JSON.stringify(data[0].object));
             context.commit('setState', { name: type, data: data[0].object });
           }
         }
@@ -1226,57 +1230,58 @@ const dataModule = {
       let rows = 0;
       let done = false;
 
-      const tokens = {};
-      if (!(parameter.chainId in tokens)) {
-        tokens[parameter.chainId] = {};
-      }
-      console.log("tokens: " + JSON.stringify(tokens, null, 2));
-
       do {
         let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
         logInfo("dataModule", "actions.collateIt - sales - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.blockNumber + '.' + e.logIndex )));
         for (const transfer of data) {
           if (transfer.eventType == "erc721" && transfer.type == "Transfer") {
-            // console.log("from: " + transfer.from + ", to: " + transfer.to + ", contract: " + transfer.contract + ", tokenId: " + transfer.tokenId);
-            if (!(transfer.contract in tokens[parameter.chainId])) {
-              tokens[parameter.chainId][transfer.contract] = {};
-            }
             if ((transfer.from in selectedAddressesMap) || (transfer.to in selectedAddressesMap)) {
               context.commit('processTokenTransfer', transfer);
-              // if (!(item.to in tokens[parameter.chainId][item.contract])) {
-              //   tokens[parameter.chainId][item.contract][item.tokenId] = {
-              //     owner: item.to,
-              //     blockNumber: item.blockNumber,
-              //     logIndex: item.logIndex
-              //   };
-              // }
             }
           }
-          // if (item.tx.to != ENS_ETHREGISTRARCONTROLLER) {
-          //   const log = item.tx.logs.filter(e => e.logIndex == item.logIndex);
-          // } else if (
-          //   item.tx.to != OPENSEA_TRANSFERHELPER &&
-          //   item.tx.to != ENS_OLD_ETHREGISTRARCONTROLLER &&
-          //   // item.tx.to != ENS_ETHREGISTRARCONTROLLER &&
-          //   item.tx.to != ENS_BASEREGISTRARIMPLEMENTATION &&
-          //   item.tx.to != ENSVISION_BULKREGISTRATION_1 &&
-          //   item.tx.to != ENSVISION_BULKREGISTRATION_2 &&
-          //   item.tx.to != SEAPORT_1_1 &&
-          //   item.tx.to != SEAPORT_1_4 &&
-          //   item.tx.to != SEAPORT_1_5 &&
-          //   item.tx.to != ENS_ERC1155_ADDRESS &&
-          //   item.tx.to != RESERVOIRV6_0_1
-          // ) {
-          //   console.log(item.txHash + " " + item.tx.to + " " + item.to);
-          // }
         }
         rows = parseInt(rows) + data.length;
-        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE; // || rows >= 3000;
-        // done = true;
+        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
       } while (!done);
-      // context.commit('setSales', sales);
-      // console.log("tokens: " + JSON.stringify(tokens, null, 2));
       console.log("context.state.tokens: " + JSON.stringify(context.state.tokens, null, 2));
+
+
+      // do {
+      //   let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+      //   logInfo("dataModule", "actions.collateIt - sales - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.blockNumber + '.' + e.logIndex )));
+      //   for (const transfer of data) {
+      //     if (transfer.eventType == "erc721" && transfer.type == "Transfer") {
+      //       if ((transfer.from in selectedAddressesMap) || (transfer.to in selectedAddressesMap)) {
+      //         context.commit('processTokenTransfer', transfer);
+      //       }
+      //     }
+      //     // if (item.tx.to != ENS_ETHREGISTRARCONTROLLER) {
+      //     //   const log = item.tx.logs.filter(e => e.logIndex == item.logIndex);
+      //     // } else if (
+      //     //   item.tx.to != OPENSEA_TRANSFERHELPER &&
+      //     //   item.tx.to != ENS_OLD_ETHREGISTRARCONTROLLER &&
+      //     //   // item.tx.to != ENS_ETHREGISTRARCONTROLLER &&
+      //     //   item.tx.to != ENS_BASEREGISTRARIMPLEMENTATION &&
+      //     //   item.tx.to != ENSVISION_BULKREGISTRATION_1 &&
+      //     //   item.tx.to != ENSVISION_BULKREGISTRATION_2 &&
+      //     //   item.tx.to != SEAPORT_1_1 &&
+      //     //   item.tx.to != SEAPORT_1_4 &&
+      //     //   item.tx.to != SEAPORT_1_5 &&
+      //     //   item.tx.to != ENS_ERC1155_ADDRESS &&
+      //     //   item.tx.to != RESERVOIRV6_0_1
+      //     // ) {
+      //     //   console.log(item.txHash + " " + item.tx.to + " " + item.to);
+      //     // }
+      //   }
+      //   rows = parseInt(rows) + data.length;
+      //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE; // || rows >= 3000;
+      //   // done = true;
+      // } while (!done);
+      // // context.commit('setSales', sales);
+      // // console.log("tokens: " + JSON.stringify(tokens, null, 2));
+      // console.log("context.state.tokens: " + JSON.stringify(context.state.tokens, null, 2));
+
+
 
       // let collection = null;
       // // const tokens = {};
@@ -1402,6 +1407,7 @@ const dataModule = {
       // context.commit('setOffers', offers);
       //
       // await context.dispatch('saveData', ['collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers']);
+      await context.dispatch('saveData', ['tokens']);
       logInfo("dataModule", "actions.collateIt END");
     },
 
