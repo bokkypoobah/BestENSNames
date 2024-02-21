@@ -1453,13 +1453,35 @@ const dataModule = {
                 let inputString;
                 [inputString, expiredName, expiryString] = metadataFileContent.message.match(/'(.*)'.*at\s(.*)\./) || [null, null, null]
                 expiry = moment.utc(expiryString).unix();
-                console.log("EXPIRED - name: '" + name + "', expiryString: '" + expiryString + "', expiry: " + expiry);
+                // console.log("EXPIRED - name: '" + name + "', expiryString: '" + expiryString + "', expiry: " + expiry);
                 expired = true;
               } else {
                 const expiryRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Expiration Date");
-                console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
+                // console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
                 expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
               }
+
+              const name = expired ? expiredName : (metadataFileContent.name || undefined);
+              console.log("name: " + name);
+              const description = expired ? ("Expired " + expiredName) : (metadataFileContent.description || undefined);
+              console.log("description: " + description);
+              console.log("expiry: " + expiry);
+              const attributes = expired ? [] : (metadataFileContent.attributes || []);
+              attributes.sort((a, b) => {
+                return ('' + a.trait_type).localeCompare(b.trait_type);
+              });
+              console.log("attributes: " + JSON.stringify(attributes, null, 2));
+              const image = expired ? null : metadataFileContent.image;
+              // const imageSource = expired ? null : metadataFileContent.image;
+              // let image = null;
+              // if (!expired) {
+              //   const imageFile = metadataFileContent.image.substring(0, 7) == "ipfs://" ? "https://ipfs.io/ipfs/" + metadataFileContent.image.substring(7) : metadataFileContent.image;
+              //   const base64 = await imageUrlToBase64(imageFile);
+              //   image = base64 || undefined;
+              // }
+              console.log("image: " + JSON.stringify(image, null, 2));
+
+
               // metadata.name = expired ? expiredName : (metadataFileContent.name || undefined);
               // metadata.description = expired ? ("Expired " + expiredName) : (metadataFileContent.description || undefined);
               // metadata.expiry = expiry;
@@ -1481,11 +1503,11 @@ const dataModule = {
             completed++;
             context.commit('setSyncCompleted', completed);
           }
-          if (context.state.sync.halt) {
+          if (context.state.sync.halt || completed > 5) {
             break;
           }
         }
-        if (context.state.sync.halt) {
+        if (context.state.sync.halt || completed > 5) {
           break;
         }
       }
