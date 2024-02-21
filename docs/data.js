@@ -782,7 +782,7 @@ const dataModule = {
         for (let type of ['addresses', 'tokens' /*, 'attributeFilter', 'selectedCollection', 'idFilter', 'ownerFilter', 'collections', 'showSideFilter', 'collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers', 'ens' */]) {
           const data = await db0.cache.where("objectName").equals(type).toArray();
           if (data.length == 1) {
-            logInfo("dataModule", "actions.restoreState " + type + " => " + JSON.stringify(data[0].object));
+            // logInfo("dataModule", "actions.restoreState " + type + " => " + JSON.stringify(data[0].object));
             context.commit('setState', { name: type, data: data[0].object });
           }
         }
@@ -965,8 +965,12 @@ const dataModule = {
         await context.dispatch('syncENSEventsData', parameter);
       }
 
-      if (options.devThing || options.ensNames) {
+      if (options.ensNames && !options.devThing) {
         await context.dispatch('collateIt', parameter);
+      }
+
+      if (options.devThing || options.ensNames) {
+        await context.dispatch('syncMetadata', parameter);
       }
 
       // if (options.ens) {
@@ -1411,6 +1415,18 @@ const dataModule = {
       logInfo("dataModule", "actions.collateIt END");
     },
 
+    async syncMetadata(context, parameter) {
+      logInfo("dataModule", "actions.syncMetadata: " + JSON.stringify(parameter));
+      const db = new Dexie(context.state.db.name);
+      db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+      for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId])) {
+        for (const [tokenId, tokenData] of Object.entries(contractData)) {
+          console.log(contract + "/" + tokenId + " = > " + JSON.stringify(tokenData));
+        }
+      }
+    },
 
     async syncImportExchangeRates(context, parameter) {
       const reportingCurrency = store.getters['config/settings'].reportingCurrency;
