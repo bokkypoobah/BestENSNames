@@ -1264,10 +1264,8 @@ const dataModule = {
       const total = Object.keys(newTxs).length;
       logInfo("dataModule", "actions.syncENSEventTxData - total: " + total);
       context.commit('setSyncSection', { section: 'ENS Event Tx Data', total });
-
       let completed = 0;
       for (let txHash of Object.keys(newTxs)) {
-        console.log(txHash);
         const tx = await provider.getTransaction(txHash);
         const txReceipt = await provider.getTransactionReceipt(txHash);
         context.commit('addTx', {
@@ -1298,54 +1296,7 @@ const dataModule = {
           break;
         }
       }
-
-      // let rows = 0;
-      // do {
-      //   let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
-      //   logInfo("dataModule", "actions.syncENSEventTxData - data.length: " + data.length + ", first[0..9]: " + JSON.stringify(data.slice(0, 10).map(e => e.blockNumber + '.' + e.logIndex )));
-      //   const records = [];
-      //   for (const item of data) {
-      //     if (item.timestamp == null) {
-      //       const block = await provider.getBlock(item.blockNumber);
-      //       item.timestamp = block.timestamp;
-      //       const tx = await provider.getTransaction(item.txHash);
-      //       const txReceipt = await provider.getTransactionReceipt(item.txHash);
-      //       item.tx = {
-      //         type: tx.type,
-      //         blockHash: tx.blockHash,
-      //         from: tx.from,
-      //         gasPrice: ethers.BigNumber.from(tx.gasPrice).toString(),
-      //         gasLimit: ethers.BigNumber.from(tx.gasLimit).toString(),
-      //         to: tx.to,
-      //         value: ethers.BigNumber.from(tx.value).toString(),
-      //         nonce: tx.nonce,
-      //         data: tx.to && tx.data || null, // Remove contract creation data to reduce memory footprint
-      //         chainId: tx.chainId,
-      //         contractAddress: txReceipt.contractAddress,
-      //         transactionIndex: txReceipt.transactionIndex,
-      //         gasUsed: ethers.BigNumber.from(txReceipt.gasUsed).toString(),
-      //         blockHash: txReceipt.blockHash,
-      //         logs: txReceipt.logs,
-      //         cumulativeGasUsed: ethers.BigNumber.from(txReceipt.cumulativeGasUsed).toString(),
-      //         effectiveGasPrice: ethers.BigNumber.from(txReceipt.effectiveGasPrice).toString(),
-      //         status: txReceipt.status,
-      //         type: txReceipt.type,
-      //       };
-      //       records.push(item);
-      //     }
-      //     rows++;
-      //     context.commit('setSyncCompleted', rows);
-      //   }
-      //   if (records.length > 0) {
-      //     await db.tokenEvents.bulkPut(records).then (function() {
-      //     }).catch(function(error) {
-      //       console.log("syncENSEventTxData.bulkPut error: " + error);
-      //     });
-      //   }
-      //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
-      // } while (!done && !context.state.sync.halt);
-      console.log("context.state.txs: " + JSON.stringify(context.state.txs, null, 2));
-
+      // console.log("context.state.txs: " + JSON.stringify(context.state.txs, null, 2));
       await context.dispatch('saveData', ['txs']);
       logInfo("dataModule", "actions.syncENSEventTxData END");
     },
