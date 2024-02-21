@@ -524,6 +524,7 @@ const Addresses = {
       store.dispatch('syncOptions/viewSyncOptions', blah);
     },
     async halt() {
+      // logInfo("Addresses", "methods.halt");
       store.dispatch('data/setSyncHalt', true);
     },
     ensOrAccount(account, length = 0) {

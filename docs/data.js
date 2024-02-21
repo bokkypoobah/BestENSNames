@@ -770,6 +770,7 @@ const dataModule = {
       state.sync.completed = completed;
     },
     setSyncHalt(state, halt) {
+      // logInfo("dataModule", "mutations.setSyncHalt halt: " + halt);
       state.sync.halt = halt;
     },
   },
@@ -889,6 +890,7 @@ const dataModule = {
       await context.dispatch('saveData', ['accounts']);
     },
     async setSyncHalt(context, halt) {
+      // logInfo("dataModule", "actions.setSyncHalt: " + halt);
       context.commit('setSyncHalt', halt);
     },
     async resetTokens(context) {
@@ -1167,7 +1169,7 @@ const dataModule = {
         done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
       } while (!done);
       logInfo("dataModule", "actions.syncENSEventsData - total: " + total);
-      context.commit('setSyncSection', { section: 'Stealth Transfer Data', total });
+      context.commit('setSyncSection', { section: 'Token Event Data', total });
       let rows = 0;
       do {
         let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
@@ -1212,7 +1214,7 @@ const dataModule = {
           });
         }
         done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
-      } while (!done && !context.state.halt);
+      } while (!done && !context.state.sync.halt);
 
       logInfo("dataModule", "actions.syncENSEventsData END");
     },
@@ -1422,58 +1424,72 @@ const dataModule = {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
 
       let total = 0;
+      let completed = 0;
       for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId])) {
         for (const [tokenId, tokenData] of Object.entries(contractData)) {
-          // console.log(contract + "/" + tokenId + " = > " + JSON.stringify(tokenData));
-          const tokenURI = "https://metadata.ens.domains/mainnet/" + contract + "/" + tokenId;
-          console.log(tokenURI);
-          try {
-            const metadataFileContent = await fetch(tokenURI).then(response => response.json());
-            // console.log(JSON.stringify(metadataFileContent, null, 2));
-            let expiredName = null;
-            let expiry = null;
-            let expired = false;
-            if (metadataFileContent && metadataFileContent.message) {
-              let inputString;
-              [inputString, expiredName, expiryString] = metadataFileContent.message.match(/'(.*)'.*at\s(.*)\./) || [null, null, null]
-              expiry = moment.utc(expiryString).unix();
-              console.log("EXPIRED - name: '" + name + "', expiryString: '" + expiryString + "', expiry: " + expiry);
-              expired = true;
-            } else {
-              const expiryRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Expiration Date");
-              console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
-              expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
-            }
-
-            // metadata.name = expired ? expiredName : (metadataFileContent.name || undefined);
-            // metadata.description = expired ? ("Expired " + expiredName) : (metadataFileContent.description || undefined);
-            // metadata.expiry = expiry;
-            // metadata.attributes = expired ? [] : (metadataFileContent.attributes || []);
-            // metadata.attributes.sort((a, b) => {
-            //   return ('' + a.trait_type).localeCompare(b.trait_type);
-            // });
-            // metadata.imageSource = expired ? null : metadataFileContent.image;
-            // if (!expired) {
-            //   const imageFile = metadataFileContent.image.substring(0, 7) == "ipfs://" ? "https://ipfs.io/ipfs/" + metadataFileContent.image.substring(7) : metadataFileContent.image;
-            //   const base64 = await imageUrlToBase64(imageFile);
-            //   metadata.image = base64 || undefined;
-            // } else {
-            //   metadata.image = null;
-            // }
-
-
-          } catch (e) {
-            console.error(e.message);
+          if (tokenData.name) {
+            completed++;
           }
           total++;
-          if (total > 5) {
+        }
+      }
+      context.commit('setSyncSection', { section: 'Token Metadata', total });
+      context.commit('setSyncCompleted', completed);
+
+      total = 0;
+      for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId])) {
+        for (const [tokenId, tokenData] of Object.entries(contractData)) {
+          if (!tokenData.name) {
+            // console.log(contract + "/" + tokenId + " = > " + JSON.stringify(tokenData));
+            const tokenURI = "https://metadata.ens.domains/mainnet/" + contract + "/" + tokenId;
+            console.log(tokenURI);
+            try {
+              const metadataFileContent = await fetch(tokenURI).then(response => response.json());
+              // console.log(JSON.stringify(metadataFileContent, null, 2));
+              let expiredName = null;
+              let expiry = null;
+              let expired = false;
+              if (metadataFileContent && metadataFileContent.message) {
+                let inputString;
+                [inputString, expiredName, expiryString] = metadataFileContent.message.match(/'(.*)'.*at\s(.*)\./) || [null, null, null]
+                expiry = moment.utc(expiryString).unix();
+                console.log("EXPIRED - name: '" + name + "', expiryString: '" + expiryString + "', expiry: " + expiry);
+                expired = true;
+              } else {
+                const expiryRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Expiration Date");
+                console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
+                expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
+              }
+              // metadata.name = expired ? expiredName : (metadataFileContent.name || undefined);
+              // metadata.description = expired ? ("Expired " + expiredName) : (metadataFileContent.description || undefined);
+              // metadata.expiry = expiry;
+              // metadata.attributes = expired ? [] : (metadataFileContent.attributes || []);
+              // metadata.attributes.sort((a, b) => {
+              //   return ('' + a.trait_type).localeCompare(b.trait_type);
+              // });
+              // metadata.imageSource = expired ? null : metadataFileContent.image;
+              // if (!expired) {
+              //   const imageFile = metadataFileContent.image.substring(0, 7) == "ipfs://" ? "https://ipfs.io/ipfs/" + metadataFileContent.image.substring(7) : metadataFileContent.image;
+              //   const base64 = await imageUrlToBase64(imageFile);
+              //   metadata.image = base64 || undefined;
+              // } else {
+              //   metadata.image = null;
+              // }
+            } catch (e) {
+              console.error(e.message);
+            }
+            completed++;
+            context.commit('setSyncCompleted', completed);
+          }
+          if (context.state.sync.halt) {
             break;
           }
         }
-        if (total > 5) {
+        if (context.state.sync.halt) {
           break;
         }
       }
+      await context.dispatch('saveData', ['tokens']);
     },
 
     async syncImportExchangeRates(context, parameter) {
