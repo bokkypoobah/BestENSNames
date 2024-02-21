@@ -131,6 +131,7 @@ const dataModule = {
   namespaced: true,
   state: {
     DB_PROCESSING_BATCH_SIZE: 100,
+    ENS_GRACE_PERIOD: 7776000, // TODO: Retrieve from 0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85 GRACE_PERIOD
     collections: {
       "1": {
         "0x0Ee24c748445Fb48028a74b0ccb6b46d7D3e3b33": {
@@ -492,6 +493,8 @@ const dataModule = {
       if (token.tokenId in state.tokens[token.chainId][token.contract]) {
         Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'name', token.name);
         Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'description', token.description);
+        Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'created', token.created);
+        Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'registration', token.registration);
         Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'expiry', token.expiry);
         Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'attributes', token.attributes);
         Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'image', token.image);
@@ -1526,6 +1529,8 @@ const dataModule = {
               const metadataFileContent = await fetch(tokenURI).then(response => response.json());
               // console.log(JSON.stringify(metadataFileContent, null, 2));
               let expiredName = null;
+              let created = null;
+              let registration = null;
               let expiry = null;
               let expired = false;
               if (metadataFileContent && metadataFileContent.message) {
@@ -1535,6 +1540,15 @@ const dataModule = {
                 // console.log("EXPIRED - name: '" + name + "', expiryString: '" + expiryString + "', expiry: " + expiry);
                 expired = true;
               } else {
+
+                const createdRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Created Date");
+                // console.log("createdRecord: " + JSON.stringify(createdRecord, null, 2));
+                created = createdRecord.length == 1 && createdRecord[0].value / 1000 || null;
+
+                const registrationRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Registration Date");
+                // console.log("registrationRecord: " + JSON.stringify(registrationRecord, null, 2));
+                registration = registrationRecord.length == 1 && registrationRecord[0].value / 1000 || null;
+
                 const expiryRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Expiration Date");
                 // console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
                 expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
@@ -1564,6 +1578,8 @@ const dataModule = {
                 tokenId,
                 name,
                 description,
+                created,
+                registration,
                 expiry,
                 attributes,
                 image,

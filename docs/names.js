@@ -148,7 +148,7 @@ const Names = {
 
               <template #cell(name)="data">
                 <b-link :href="'https://opensea.io/assets/ethereum/' + data.item.contract + '/' + data.item.tokenId" target="_blank">
-                  <b>{{ data.item.name }}</b>
+                  <b>{{ data.item.name || "(null)" }}</b>
                 </b-link>
                 <br />
                 <font size="-2">
