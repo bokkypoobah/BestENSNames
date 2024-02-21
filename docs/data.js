@@ -199,16 +199,16 @@ const dataModule = {
       halt: false,
     },
     db: {
-      name: "nftspreadsdata080d",
+      name: "bestensnamesdata080a",
       version: 1,
       schemaDefinition: {
         // announcements: '[chainId+blockNumber+logIndex],[blockNumber+contract],contract,confirmations,stealthAddress',
         // registrations: '[chainId+blockNumber+logIndex],[blockNumber+contract],contract,confirmations',
-        // tokenEvents: '[chainId+blockNumber+logIndex],[blockNumber+contract],contract,confirmations',
-        tokens: '[chainId+contract+tokenId]',
-        sales: '[chainId+blockNumber+logIndex],contract,confirmations',
-        listings: '[chainId+contract+id],contract,maker,taker',
-        offers: '[chainId+contract+id],contract,maker,taker',
+        tokenEvents: '[chainId+blockNumber+logIndex],[blockNumber+contract],contract,confirmations',
+        // tokens: '[chainId+contract+tokenId]',
+        // sales: '[chainId+blockNumber+logIndex],contract,confirmations',
+        // listings: '[chainId+contract+id],contract,maker,taker',
+        // offers: '[chainId+contract+id],contract,maker,taker',
         cache: '&objectName',
       },
       updated: null,
@@ -1037,7 +1037,7 @@ const dataModule = {
               console.log("NOT HANDLED: " + JSON.stringify(log));
             }
             // TODO: Testing if (eventRecord && contract == "0x7439E9Bb6D8a84dd3A23fe621A30F95403F87fB9") {
-            if (eventRecord) {
+            if (eventRecord && (contract == ENS_ERC721_ADDRESS || contract == ENS_ERC1155_ADDRESS)) {
               records.push( {
                 chainId: parameter.chainId,
                 blockNumber: parseInt(log.blockNumber),
@@ -1091,22 +1091,24 @@ const dataModule = {
       // this.sync.total = 0;
       // this.sync.section = 'ERC-20 & ERC-721 Tokens';
       // TODO
-      const selectedAddresses = ['0x000000000000000000000000' + parameter.coinbase.substring(2, 42).toLowerCase()];
+      // const selectedAddresses = ['0x000000000000000000000000' + parameter.coinbase.substring(2, 42).toLowerCase()];
       // console.log(selectedAddresses);
-      // const selectedAddresses = [];
-      // for (const [address, addressData] of Object.entries(this.addresses)) {
-      //   if (address.substring(0, 2) == "0x" && addressData.mine) {
-      //     selectedAddresses.push('0x000000000000000000000000' + address.substring(2, 42).toLowerCase());
-      //   }
-      // }
-      // if (selectedAddresses.length > 0) {
+      const selectedAddresses = [];
+      for (const [address, addressData] of Object.entries(context.state.addresses)) {
+        if (address.substring(0, 2) == "0x" && addressData.mine) {
+          selectedAddresses.push('0x000000000000000000000000' + address.substring(2, 42).toLowerCase());
+        }
+      }
+      console.log("selectedAddresses: " + JSON.stringify(selectedAddresses, null, 2));
+      if (selectedAddresses.length > 0) {
       //   const deleteCall = await db.tokenEvents.where("confirmations").below(parameter.confirmations).delete();
       //   const latest = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).last();
       //   const startBlock = (parameter.incrementalSync && latest) ? parseInt(latest.blockNumber) + 1: 0;
-      //   for (let section = 0; section < 2; section++) {
-      //     await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
-      //   }
-      // }
+        const startBlock = 0;
+        for (let section = 0; section < 2; section++) {
+          await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
+        }
+      }
       logInfo("dataModule", "actions.syncENSEvents END");
     },
 
