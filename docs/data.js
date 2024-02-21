@@ -937,6 +937,7 @@ const dataModule = {
       context.commit('forceRefresh');
     },
 
+    // TODO: Add ERC-1155 NameWrapper Transfer events
     async syncENSEvents(context, parameter) {
       logInfo("dataModule", "actions.syncENSEvents: " + JSON.stringify(parameter));
       const db = new Dexie(context.state.db.name);
@@ -1172,40 +1173,66 @@ const dataModule = {
       db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
       const provider = new ethers.providers.Web3Provider(window.ethereum);
 
+      const selectedAddressesMap = {};
+      for (const [address, addressData] of Object.entries(context.state.addresses)) {
+        if (address.substring(0, 2) == "0x" && addressData.mine) {
+          selectedAddressesMap[address] = true;
+        }
+      }
+      console.log("selectedAddressesMap: " + Object.keys(selectedAddressesMap));
+
       let rows = 0;
       let done = false;
 
+      const tokens = {};
+      if (!(parameter.chainId in tokens)) {
+        tokens[parameter.chainId] = {};
+      }
+      console.log("tokens: " + JSON.stringify(tokens, null, 2));
 
-      rows = 0;
-      done = false;
-      // const sales = [];
       do {
         let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
         logInfo("dataModule", "actions.collateIt - sales - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.blockNumber + '.' + e.logIndex )));
         for (const item of data) {
-          if (
-            item.tx.to != OPENSEA_TRANSFERHELPER &&
-            item.tx.to != ENS_OLD_ETHREGISTRARCONTROLLER &&
-            item.tx.to != ENS_ETHREGISTRARCONTROLLER &&
-            item.tx.to != ENS_BASEREGISTRARIMPLEMENTATION &&
-            item.tx.to != ENSVISION_BULKREGISTRATION_1 &&
-            item.tx.to != ENSVISION_BULKREGISTRATION_2 &&
-            item.tx.to != SEAPORT_1_1 &&
-            item.tx.to != SEAPORT_1_4 &&
-            item.tx.to != SEAPORT_1_5 &&
-            item.tx.to != ENS_ERC1155_ADDRESS &&
-            item.tx.to != RESERVOIRV6_0_1
-          ) {
-            console.log(item.txHash + " " + item.tx.to + " " + item.to);
+          if (item.eventType == "erc721" && item.type == "Transfer") {
+            // console.log("from: " + item.from + ", to: " + item.to + ", contract: " + item.contract + ", tokenId: " + item.tokenId);
+            if (!(item.contract in tokens[parameter.chainId])) {
+              tokens[parameter.chainId][item.contract] = {};
+            }
+            if ((item.from in selectedAddressesMap) || (item.to in selectedAddressesMap)) {
+              if (!(item.to in tokens[parameter.chainId][item.contract])) {
+                tokens[parameter.chainId][item.contract][item.tokenId] = {
+                  owner: item.to,
+                  blockNumber: item.blockNumber,
+                  logIndex: item.logIndex
+                };
+              }
+            }
           }
-          // console.log(JSON.stringify(item));
-          // sales.push(item);
+          // if (item.tx.to != ENS_ETHREGISTRARCONTROLLER) {
+          //   const log = item.tx.logs.filter(e => e.logIndex == item.logIndex);
+          // } else if (
+          //   item.tx.to != OPENSEA_TRANSFERHELPER &&
+          //   item.tx.to != ENS_OLD_ETHREGISTRARCONTROLLER &&
+          //   // item.tx.to != ENS_ETHREGISTRARCONTROLLER &&
+          //   item.tx.to != ENS_BASEREGISTRARIMPLEMENTATION &&
+          //   item.tx.to != ENSVISION_BULKREGISTRATION_1 &&
+          //   item.tx.to != ENSVISION_BULKREGISTRATION_2 &&
+          //   item.tx.to != SEAPORT_1_1 &&
+          //   item.tx.to != SEAPORT_1_4 &&
+          //   item.tx.to != SEAPORT_1_5 &&
+          //   item.tx.to != ENS_ERC1155_ADDRESS &&
+          //   item.tx.to != RESERVOIRV6_0_1
+          // ) {
+          //   console.log(item.txHash + " " + item.tx.to + " " + item.to);
+          // }
         }
         rows = parseInt(rows) + data.length;
         done = data.length < context.state.DB_PROCESSING_BATCH_SIZE; // || rows >= 3000;
+        // done = true;
       } while (!done);
       // context.commit('setSales', sales);
-
+      console.log("tokens: " + JSON.stringify(tokens, null, 2));
 
       // let collection = null;
       // // const tokens = {};
