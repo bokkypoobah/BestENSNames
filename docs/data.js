@@ -538,7 +538,7 @@ const dataModule = {
       }
     },
     saveTokenTag(state, info) {
-      logInfo("dataModule", "mutations.saveTokenTag info: " + JSON.stringify(info, null, 2));
+      // logInfo("dataModule", "mutations.saveTokenTag info: " + JSON.stringify(info, null, 2));
       if (state.tokens[info.chainId] && state.tokens[info.chainId][info.contract] && state.tokens[info.chainId][info.contract][info.tokenId]) {
         Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'tags', info.tags);
       }

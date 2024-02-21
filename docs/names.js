@@ -152,7 +152,7 @@ const Names = {
                   {{ data.item.description }}
                 </font>
                 <font size="-2">
-                  <!-- <b-form-tags size="sm" @input="saveTokenTag({ chainId, contract: selectedCollection, tokenId: data.item.tokenId, tags: $event })" v-model="data.item.tags" tag-variant="primary" tag-pills separator=" " v-b-popover.hover="'ENTER NEW TAGS'" placeholder="" class="ml-0 mt-1 mw-100"></b-form-tags> -->
+                  <!-- <b-form-tags size="sm" @input="saveTokenTag({ chainId, contract: data.item.contract, tokenId: data.item.tokenId, tags: $event })" v-model="data.item.tags" tag-variant="primary" tag-pills separator=" " v-b-popover.hover="'ENTER NEW TAGS'" placeholder="" class="ml-0 mt-1 mw-100"></b-form-tags> -->
                 </font>
                 <b-button size="sm" @click="requestReservoirAPITokenMetadataRefresh(data.item)" variant="link" v-b-popover.hover.top="'Request Reservoir API Metadata Refresh'"><b-icon-arrow-clockwise shift-v="+1" font-scale="1.2"></b-icon-arrow-clockwise></b-button>
               </template>
@@ -161,7 +161,7 @@ const Names = {
                 <b-link :href="'https://etherscan.io/address/' + data.item.owner" target="_blank">
                   <font size="-1">{{ nameOrAddress(data.item.owner) }}</font>
                 </b-link>
-                <b-form-tags size="sm" @input="saveTokenTag({ chainId, contract: selectedCollection, tokenId: data.item.tokenId, tags: $event })" v-model="data.item.tags" tag-variant="primary" tag-pills separator=" " v-b-popover.hover="'Enter tags'" placeholder="" class="mt-2"></b-form-tags>
+                <b-form-tags size="sm" @input="saveTokenTag({ chainId, contract: data.item.contract, tokenId: data.item.tokenId, tags: $event })" v-model="data.item.tags" tag-variant="primary" tag-pills separator=" " v-b-popover.hover="'Enter tags'" placeholder="" class="mt-2"></b-form-tags>
               </template>
 
               <template #cell(attributes)="data">
@@ -352,7 +352,7 @@ const Names = {
             name: token.name,
             description: token.description,
             expiry: token.expiry,
-            attributes: token.attribute,
+            attributes: token.attributes,
             image: token.image,
             owner: token.owner,
             tags: token.tags,
