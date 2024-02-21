@@ -63,6 +63,7 @@ const store = new Vuex.Store({
     connection: connectionModule,
     welcome: welcomeModule,
     collections: collectionsModule,
+    names: namesModule,
     tokens: tokensModule,
     owners: ownersModule,
     sales: salesModule,
