@@ -130,7 +130,7 @@ const Data = {
 const dataModule = {
   namespaced: true,
   state: {
-    DB_PROCESSING_BATCH_SIZE: 25,
+    DB_PROCESSING_BATCH_SIZE: 100,
     collections: {
       "1": {
         "0x0Ee24c748445Fb48028a74b0ccb6b46d7D3e3b33": {
@@ -1183,11 +1183,26 @@ const dataModule = {
         let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
         logInfo("dataModule", "actions.collateIt - sales - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.blockNumber + '.' + e.logIndex )));
         for (const item of data) {
-          console.log(JSON.stringify(item));
+          if (
+            item.tx.to != OPENSEA_TRANSFERHELPER &&
+            item.tx.to != ENS_OLD_ETHREGISTRARCONTROLLER &&
+            item.tx.to != ENS_ETHREGISTRARCONTROLLER &&
+            item.tx.to != ENS_BASEREGISTRARIMPLEMENTATION &&
+            item.tx.to != ENSVISION_BULKREGISTRATION_1 &&
+            item.tx.to != ENSVISION_BULKREGISTRATION_2 &&
+            item.tx.to != SEAPORT_1_1 &&
+            item.tx.to != SEAPORT_1_4 &&
+            item.tx.to != SEAPORT_1_5 &&
+            item.tx.to != ENS_ERC1155_ADDRESS &&
+            item.tx.to != RESERVOIRV6_0_1
+          ) {
+            console.log(item.txHash + " " + item.tx.to + " " + item.to);
+          }
+          // console.log(JSON.stringify(item));
           // sales.push(item);
         }
         rows = parseInt(rows) + data.length;
-        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE || rows >= 30;
+        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE; // || rows >= 3000;
       } while (!done);
       // context.commit('setSales', sales);
 
