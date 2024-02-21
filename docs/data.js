@@ -417,6 +417,48 @@ const dataModule = {
       Vue.set(state, 'tokens', tokens);
       // logInfo("dataModule", "mutations.setTokens tokens: " + JSON.stringify(tokens, null, 2));
     },
+
+    processTokenTransfer(state, transfer) {
+      // logInfo("dataModule", "mutations.processTokenTransfer transfer: " + JSON.stringify(transfer, null, 2));
+      if (!(transfer.chainId in state.tokens)) {
+        Vue.set(state.tokens, transfer.chainId, {});
+      }
+      if (!(transfer.contract in state.tokens[transfer.chainId])) {
+        Vue.set(state.tokens[transfer.chainId], transfer.contract, {});
+      }
+      if (!(transfer.tokenId in state.tokens[transfer.chainId][transfer.contract])) {
+        Vue.set(state.tokens[transfer.chainId][transfer.contract], transfer.tokenId, {
+          owner: transfer.to,
+          blockNumber: transfer.blockNumber,
+          logIndex: transfer.logIndex,
+          history: [{
+            blockNumber: transfer.blockNumber,
+            logIndex: transfer.logIndex,
+            from: transfer.from,
+            to: transfer.to,
+          }],
+        });
+      } else {
+        const lastBlockNumber = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].blockNumber;
+        const lastLogIndex = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].logIndex;
+        if ((transfer.blockNumber > lastBlockNumber)  || ((transfer.blockNumber == lastBlockNumber) && (transfer.logInfo > lastLogIndex))) {
+          console.log("lastBlockNumber: " + lastBlockNumber + " vs blockNumber: " + transfer.blockNumber);
+          console.log("lastLogIndex: " + lastLogIndex + " vs logIndex: " + transfer.logIndex);
+          Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'owner', transfer.to);
+          Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'blockNumber', transfer.blockNumber);
+          Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'logIndex', transfer.logIndex);
+          const history = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].history;
+          history.push({
+            blockNumber: transfer.blockNumber,
+            logIndex: transfer.logIndex,
+            from: transfer.from,
+            to: transfer.to,
+          });
+          Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'history', history);
+        }
+      }
+    },
+
     addOrUpdateToken(state, token) {
       if (!(token.chainId in state.tokens)) {
         Vue.set(state.tokens, token.chainId, {});
@@ -1193,20 +1235,21 @@ const dataModule = {
       do {
         let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
         logInfo("dataModule", "actions.collateIt - sales - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.blockNumber + '.' + e.logIndex )));
-        for (const item of data) {
-          if (item.eventType == "erc721" && item.type == "Transfer") {
-            // console.log("from: " + item.from + ", to: " + item.to + ", contract: " + item.contract + ", tokenId: " + item.tokenId);
-            if (!(item.contract in tokens[parameter.chainId])) {
-              tokens[parameter.chainId][item.contract] = {};
+        for (const transfer of data) {
+          if (transfer.eventType == "erc721" && transfer.type == "Transfer") {
+            // console.log("from: " + transfer.from + ", to: " + transfer.to + ", contract: " + transfer.contract + ", tokenId: " + transfer.tokenId);
+            if (!(transfer.contract in tokens[parameter.chainId])) {
+              tokens[parameter.chainId][transfer.contract] = {};
             }
-            if ((item.from in selectedAddressesMap) || (item.to in selectedAddressesMap)) {
-              if (!(item.to in tokens[parameter.chainId][item.contract])) {
-                tokens[parameter.chainId][item.contract][item.tokenId] = {
-                  owner: item.to,
-                  blockNumber: item.blockNumber,
-                  logIndex: item.logIndex
-                };
-              }
+            if ((transfer.from in selectedAddressesMap) || (transfer.to in selectedAddressesMap)) {
+              context.commit('processTokenTransfer', transfer);
+              // if (!(item.to in tokens[parameter.chainId][item.contract])) {
+              //   tokens[parameter.chainId][item.contract][item.tokenId] = {
+              //     owner: item.to,
+              //     blockNumber: item.blockNumber,
+              //     logIndex: item.logIndex
+              //   };
+              // }
             }
           }
           // if (item.tx.to != ENS_ETHREGISTRARCONTROLLER) {
@@ -1232,7 +1275,8 @@ const dataModule = {
         // done = true;
       } while (!done);
       // context.commit('setSales', sales);
-      console.log("tokens: " + JSON.stringify(tokens, null, 2));
+      // console.log("tokens: " + JSON.stringify(tokens, null, 2));
+      console.log("context.state.tokens: " + JSON.stringify(context.state.tokens, null, 2));
 
       // let collection = null;
       // // const tokens = {};
