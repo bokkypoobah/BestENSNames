@@ -1421,9 +1421,57 @@ const dataModule = {
       db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
       const provider = new ethers.providers.Web3Provider(window.ethereum);
 
+      let total = 0;
       for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId])) {
         for (const [tokenId, tokenData] of Object.entries(contractData)) {
-          console.log(contract + "/" + tokenId + " = > " + JSON.stringify(tokenData));
+          // console.log(contract + "/" + tokenId + " = > " + JSON.stringify(tokenData));
+          const tokenURI = "https://metadata.ens.domains/mainnet/" + contract + "/" + tokenId;
+          console.log(tokenURI);
+          try {
+            const metadataFileContent = await fetch(tokenURI).then(response => response.json());
+            // console.log(JSON.stringify(metadataFileContent, null, 2));
+            let expiredName = null;
+            let expiry = null;
+            let expired = false;
+            if (metadataFileContent && metadataFileContent.message) {
+              let inputString;
+              [inputString, expiredName, expiryString] = metadataFileContent.message.match(/'(.*)'.*at\s(.*)\./) || [null, null, null]
+              expiry = moment.utc(expiryString).unix();
+              console.log("EXPIRED - name: '" + name + "', expiryString: '" + expiryString + "', expiry: " + expiry);
+              expired = true;
+            } else {
+              const expiryRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Expiration Date");
+              console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
+              expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
+            }
+
+            // metadata.name = expired ? expiredName : (metadataFileContent.name || undefined);
+            // metadata.description = expired ? ("Expired " + expiredName) : (metadataFileContent.description || undefined);
+            // metadata.expiry = expiry;
+            // metadata.attributes = expired ? [] : (metadataFileContent.attributes || []);
+            // metadata.attributes.sort((a, b) => {
+            //   return ('' + a.trait_type).localeCompare(b.trait_type);
+            // });
+            // metadata.imageSource = expired ? null : metadataFileContent.image;
+            // if (!expired) {
+            //   const imageFile = metadataFileContent.image.substring(0, 7) == "ipfs://" ? "https://ipfs.io/ipfs/" + metadataFileContent.image.substring(7) : metadataFileContent.image;
+            //   const base64 = await imageUrlToBase64(imageFile);
+            //   metadata.image = base64 || undefined;
+            // } else {
+            //   metadata.image = null;
+            // }
+
+
+          } catch (e) {
+            console.error(e.message);
+          }
+          total++;
+          if (total > 5) {
+            break;
+          }
+        }
+        if (total > 5) {
+          break;
         }
       }
     },
