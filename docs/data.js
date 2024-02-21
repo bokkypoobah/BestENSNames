@@ -478,6 +478,16 @@ const dataModule = {
       }
     },
 
+    addTx(state, tx) {
+      // logInfo("dataModule", "mutations.addTimestamp tx: " + JSON.stringify(tx, null, 2));
+      if (!(tx.chainId in state.txs)) {
+        Vue.set(state.txs, tx.chainId, {});
+      }
+      if (!(tx.txHash in state.txs[tx.chainId])) {
+        Vue.set(state.txs[tx.chainId], tx.txHash, tx);
+      }
+    },
+
     updateTokenMetadata(state, token) {
       logInfo("dataModule", "mutations.updateTokenMetadata token: " + JSON.stringify(token, null, 2));
       if (token.tokenId in state.tokens[token.chainId][token.contract]) {
@@ -1238,31 +1248,49 @@ const dataModule = {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       let rows = 0;
       let done = false;
-      const existingTimestamps = context.state.timestamps[parameter.chainId] || {};
-      const newBlocks = {};
+      const existingTxs = context.state.txs[parameter.chainId] || {};
+      const newTxs = {};
       do {
         let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
         logInfo("dataModule", "actions.syncENSEventTxData - data.length: " + data.length + ", first[0..9]: " + JSON.stringify(data.slice(0, 10).map(e => e.blockNumber + '.' + e.logIndex )));
         for (const item of data) {
-          if (!(item.blockNumber in existingTimestamps) && !(item.blockNumber in newBlocks)) {
-            newBlocks[item.blockNumber] = true;
+          if (!(item.txHash in existingTxs) && !(item.txHash in newTxs)) {
+            newTxs[item.txHash] = true;
           }
         }
         rows += data.length;
         done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
       } while (!done);
-      const total = Object.keys(newBlocks).length;
+      const total = Object.keys(newTxs).length;
       logInfo("dataModule", "actions.syncENSEventTxData - total: " + total);
-      context.commit('setSyncSection', { section: 'ENS Event Timestamps', total });
+      context.commit('setSyncSection', { section: 'ENS Event Tx Data', total });
 
       let completed = 0;
-      for (let blockNumber of Object.keys(newBlocks)) {
-        // console.log(blockNumber);
-        const block = await provider.getBlock(parseInt(blockNumber));
-        context.commit('addTimestamp', {
+      for (let txHash of Object.keys(newTxs)) {
+        console.log(txHash);
+        const tx = await provider.getTransaction(txHash);
+        const txReceipt = await provider.getTransactionReceipt(txHash);
+        context.commit('addTx', {
           chainId: parameter.chainId,
-          blockNumber,
-          timestamp: block.timestamp,
+          txHash,
+          type: tx.type,
+          blockHash: tx.blockHash,
+          from: tx.from,
+          gasPrice: ethers.BigNumber.from(tx.gasPrice).toString(),
+          gasLimit: ethers.BigNumber.from(tx.gasLimit).toString(),
+          to: tx.to,
+          value: ethers.BigNumber.from(tx.value).toString(),
+          nonce: tx.nonce,
+          data: tx.to && tx.data || null, // Remove contract creation data to reduce memory footprint
+          contractAddress: txReceipt.contractAddress,
+          transactionIndex: txReceipt.transactionIndex,
+          gasUsed: ethers.BigNumber.from(txReceipt.gasUsed).toString(),
+          blockHash: txReceipt.blockHash,
+          logs: txReceipt.logs,
+          cumulativeGasUsed: ethers.BigNumber.from(txReceipt.cumulativeGasUsed).toString(),
+          effectiveGasPrice: ethers.BigNumber.from(txReceipt.effectiveGasPrice).toString(),
+          status: txReceipt.status,
+          type: txReceipt.type,
         });
         completed++;
         context.commit('setSyncCompleted', completed);
@@ -1316,9 +1344,9 @@ const dataModule = {
       //   }
       //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
       // } while (!done && !context.state.sync.halt);
-      console.log("context.state.timestamps: " + JSON.stringify(context.state.timestamps, null, 2));
+      console.log("context.state.txs: " + JSON.stringify(context.state.txs, null, 2));
 
-      await context.dispatch('saveData', ['timestamps']);
+      await context.dispatch('saveData', ['txs']);
       logInfo("dataModule", "actions.syncENSEventTxData END");
     },
 
