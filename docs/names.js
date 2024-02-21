@@ -11,16 +11,16 @@ const Names = {
         </b-modal>
 
         <div class="d-flex flex-wrap m-0 p-0">
-          <div class="mt-0 pr-1">
+          <div v-if="false" class="mt-0 pr-1">
             <b-button size="sm" :pressed.sync="showSideFilter" variant="link" v-b-popover.hover.top="'Toggle filter'" class="m-0 p-1"><b-icon :icon="showSideFilter ? 'layout-sidebar-inset' : 'layout-sidebar'" shift-v="+1" font-scale="1.00"></b-icon></b-button>
           </div>
-          <div class="mt-0 pr-1" style="width: 200px;">
+          <div v-if="false" class="mt-0 pr-1" style="width: 200px;">
             <b-form-select size="sm" v-model="selectedCollection" @change="saveSettings" :options="collectionsOptions" v-b-popover.hover.top="'Select a collection, then click the Sync button'"></b-form-select>
           </div>
-          <div class="mt-0 pr-1" style="width: 200px;">
+          <div v-if="false" class="mt-0 pr-1" style="width: 200px;">
             <b-form-input type="text" size="sm" v-model.trim="idFilter" debounce="600" v-b-popover.hover.top="'List of tokenIds or tokenId ranges'" placeholder="🔍  id1 id2-id3 ..."></b-form-input>
           </div>
-          <div class="mt-0 pr-1" style="width: 200px;">
+          <div v-if="false" class="mt-0 pr-1" style="width: 200px;">
             <b-form-input type="text" size="sm" v-model.trim="ownerFilter" debounce="600" v-b-popover.hover.top="'Regex filter by owner address or name'" placeholder="🔍 owner addr/name regex"></b-form-input>
           </div>
           <div v-if="false" class="mt-0 pr-1" style="width: 200px;">
@@ -278,6 +278,12 @@ const Names = {
     tokens() {
       return store.getters['data/tokens'];
     },
+    timestamps() {
+      return store.getters['data/timestamps'];
+    },
+    txs() {
+      return store.getters['data/txs'];
+    },
 
     addresses() {
       return store.getters['data/addresses'];
@@ -325,21 +331,45 @@ const Names = {
     },
 
     totalCollections() {
-      console.log("this.tokens: " + JSON.stringify(this.tokens, null, 2));
-      const tokens = this.tokens[this.chainId] && this.tokens[this.chainId][this.selectedCollection] || {};
-      return (store.getters['data/forceRefresh'] % 2) == 0 ? Object.keys(tokens).length : Object.keys(tokens).length;
-    },
-    filteredItems() {
-      const results = (store.getters['data/forceRefresh'] % 2) == 0 ? store.getters['data/filteredTokens'] : store.getters['data/filteredTokens'];
-      let regex = null;
-      if (this.settings.filter != null && this.settings.filter.length > 0) {
-        try {
-          regex = new RegExp(this.settings.filter, 'i');
-        } catch (e) {
-          console.log("filteredItems - regex error: " + e.message);
-          regex = new RegExp(/thequickbrowndogjumpsoverthelazyfox/, 'i');
+      let result = (store.getters['data/forceRefresh'] % 2) == 0 ? 0 : 0;
+      for (const [contract, contractData] of Object.entries(this.tokens[this.chainId] || {})) {
+        for (const [tokenId, token] of Object.entries(contractData)) {
+          // console.log(contract + "/" + tokenId + " => " + JSON.stringify(token, null, 2));
+          result++;
         }
       }
+      return result;
+    },
+    filteredItems() {
+      const results = (store.getters['data/forceRefresh'] % 2) == 0 ? [] :[];
+      for (const [contract, contractData] of Object.entries(this.tokens[this.chainId] || {})) {
+        for (const [tokenId, token] of Object.entries(contractData)) {
+          // console.log(contract + "/" + tokenId + " => " + JSON.stringify(token, null, 2));
+          results.push({
+            chainId: this.chainId,
+            contract,
+            tokenId,
+            name: token.name,
+            description: token.description,
+            expiry: token.expiry,
+            attributes: token.attribute,
+            image: token.image,
+            owner: token.owner,
+            tags: token.tags,
+            history: token.history,
+          });
+        }
+      }
+      // const results = (store.getters['data/forceRefresh'] % 2) == 0 ? store.getters['data/filteredTokens'] : store.getters['data/filteredTokens'];
+      // let regex = null;
+      // if (this.settings.filter != null && this.settings.filter.length > 0) {
+      //   try {
+      //     regex = new RegExp(this.settings.filter, 'i');
+      //   } catch (e) {
+      //     console.log("filteredItems - regex error: " + e.message);
+      //     regex = new RegExp(/thequickbrowndogjumpsoverthelazyfox/, 'i');
+      //   }
+      // }
       return results;
     },
     filteredSortedItems() {
@@ -356,7 +386,7 @@ const Names = {
       return results;
     },
     pagedFilteredSortedItems() {
-      // logInfo("Names", "pagedFilteredSortedItems - results[0..1]: " + JSON.stringify(this.filteredSortedItems.slice(0, 2), null, 2));
+      logInfo("Names", "pagedFilteredSortedItems - results[0..1]: " + JSON.stringify(this.filteredSortedItems.slice(0, 2), null, 2));
       return this.filteredSortedItems.slice((this.settings.currentPage - 1) * this.settings.pageSize, this.settings.currentPage * this.settings.pageSize);
     },
 
