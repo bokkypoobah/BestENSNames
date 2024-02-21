@@ -809,7 +809,7 @@ const dataModule = {
         for (let type of ['addresses', 'timestamps', 'txs', 'tokens' /*, 'attributeFilter', 'selectedCollection', 'idFilter', 'ownerFilter', 'collections', 'showSideFilter', 'collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers', 'ens' */]) {
           const data = await db0.cache.where("objectName").equals(type).toArray();
           if (data.length == 1) {
-            logInfo("dataModule", "actions.restoreState " + type + " => " + JSON.stringify(data[0].object));
+            // logInfo("dataModule", "actions.restoreState " + type + " => " + JSON.stringify(data[0].object));
             context.commit('setState', { name: type, data: data[0].object });
           }
         }
@@ -989,8 +989,12 @@ const dataModule = {
         await context.dispatch('syncENSEvents', parameter);
       }
 
-      if (options.ensNames) {
+      if (options.ensNames && !options.devThing) {
         await context.dispatch('syncENSEventTimestamps', parameter);
+      }
+
+      if (options.ensNames) {
+        await context.dispatch('syncENSEventTxData', parameter);
       }
 
       // if (options.ensNames && !options.devThing) {
@@ -1208,7 +1212,6 @@ const dataModule = {
       const total = Object.keys(newBlocks).length;
       logInfo("dataModule", "actions.syncENSEventTimestamps - total: " + total);
       context.commit('setSyncSection', { section: 'ENS Event Timestamps', total });
-
       let completed = 0;
       for (let blockNumber of Object.keys(newBlocks)) {
         const block = await provider.getBlock(parseInt(blockNumber));
@@ -1223,54 +1226,7 @@ const dataModule = {
           break;
         }
       }
-
-      // let rows = 0;
-      // do {
-      //   let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
-      //   logInfo("dataModule", "actions.syncENSEventTimestamps - data.length: " + data.length + ", first[0..9]: " + JSON.stringify(data.slice(0, 10).map(e => e.blockNumber + '.' + e.logIndex )));
-      //   const records = [];
-      //   for (const item of data) {
-      //     if (item.timestamp == null) {
-      //       const block = await provider.getBlock(item.blockNumber);
-      //       item.timestamp = block.timestamp;
-      //       const tx = await provider.getTransaction(item.txHash);
-      //       const txReceipt = await provider.getTransactionReceipt(item.txHash);
-      //       item.tx = {
-      //         type: tx.type,
-      //         blockHash: tx.blockHash,
-      //         from: tx.from,
-      //         gasPrice: ethers.BigNumber.from(tx.gasPrice).toString(),
-      //         gasLimit: ethers.BigNumber.from(tx.gasLimit).toString(),
-      //         to: tx.to,
-      //         value: ethers.BigNumber.from(tx.value).toString(),
-      //         nonce: tx.nonce,
-      //         data: tx.to && tx.data || null, // Remove contract creation data to reduce memory footprint
-      //         chainId: tx.chainId,
-      //         contractAddress: txReceipt.contractAddress,
-      //         transactionIndex: txReceipt.transactionIndex,
-      //         gasUsed: ethers.BigNumber.from(txReceipt.gasUsed).toString(),
-      //         blockHash: txReceipt.blockHash,
-      //         logs: txReceipt.logs,
-      //         cumulativeGasUsed: ethers.BigNumber.from(txReceipt.cumulativeGasUsed).toString(),
-      //         effectiveGasPrice: ethers.BigNumber.from(txReceipt.effectiveGasPrice).toString(),
-      //         status: txReceipt.status,
-      //         type: txReceipt.type,
-      //       };
-      //       records.push(item);
-      //     }
-      //     rows++;
-      //     context.commit('setSyncCompleted', rows);
-      //   }
-      //   if (records.length > 0) {
-      //     await db.tokenEvents.bulkPut(records).then (function() {
-      //     }).catch(function(error) {
-      //       console.log("syncENSEventTimestamps.bulkPut error: " + error);
-      //     });
-      //   }
-      //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
-      // } while (!done && !context.state.sync.halt);
-      console.log("context.state.timestamps: " + JSON.stringify(context.state.timestamps, null, 2));
-
+      // console.log("context.state.timestamps: " + JSON.stringify(context.state.timestamps, null, 2));
       await context.dispatch('saveData', ['timestamps']);
       logInfo("dataModule", "actions.syncENSEventTimestamps END");
     },
