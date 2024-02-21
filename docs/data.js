@@ -176,6 +176,8 @@ const dataModule = {
     showSideFilter: false,
     collection: {}, // contract, id, symbol, name, image, slug, creator, tokenCount
     tokens: {}, // chainId -> tokenId => { chainId, contract, tokenId, name, description, image, kind, isFlagged, isSpam, isNsfw, metadataDisabled, rarity, rarityRank, attributes
+    timestamps: {}, // chainId -> blockNumber => timestamp
+    txs: {}, // txHash => tx & txReceipt
     attributes: [],
     attributeFilter: {},
     owners: {},
@@ -222,6 +224,8 @@ const dataModule = {
     showSideFilter: state => state.showSideFilter,
     collection: state => state.collection,
     tokens: state => state.tokens,
+    timestamps: state => state.timestamps,
+    txs: state => state.txs,
     attributes: state => state.attributes,
     attributeFilter: state => state.attributeFilter,
     owners: state => state.owners,
@@ -435,6 +439,7 @@ const dataModule = {
           imageSource: null,
           image: null,
           owner: transfer.to,
+          tags: [],
           history: [{
             blockNumber: transfer.blockNumber,
             logIndex: transfer.logIndex,
@@ -463,57 +468,24 @@ const dataModule = {
       }
     },
 
-    updateTokenMetadata(state, info) {
-      logInfo("dataModule", "mutations.updateTokenMetadata info: " + JSON.stringify(info, null, 2));
-      // if (!(transfer.chainId in state.tokens)) {
-      //   Vue.set(state.tokens, transfer.chainId, {});
-      // }
-      // if (!(transfer.contract in state.tokens[transfer.chainId])) {
-      //   Vue.set(state.tokens[transfer.chainId], transfer.contract, {});
-      // }
-      if (info.tokenId in state.tokens[info.chainId][info.contract]) {
-        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'name', info.name);
-        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'description', info.description);
-        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'expiry', info.expiry);
-        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'attributes', info.attributes);
-        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'image', info.image);
+    addTimestamp(state, info) {
+      // logInfo("dataModule", "mutations.addTimestamp info: " + JSON.stringify(info, null, 2));
+      if (!(info.chainId in state.timestamps)) {
+        Vue.set(state.timestamps, info.chainId, {});
+      }
+      if (!(info.blockNumber in state.timestamps[info.chainId])) {
+        Vue.set(state.timestamps[info.chainId], info.blockNumber, info.timestamp);
+      }
+    },
 
-
-
-
-      //   Vue.set(state.tokens[transfer.chainId][transfer.contract], transfer.tokenId, {
-      //     name: null,
-      //     description: null,
-      //     expiry: null,
-      //     attributes: {},
-      //     imageSource: null,
-      //     image: null,
-      //     owner: transfer.to,
-      //     history: [{
-      //       blockNumber: transfer.blockNumber,
-      //       logIndex: transfer.logIndex,
-      //       timestamp: transfer.timestamp,
-      //       from: transfer.from,
-      //       to: transfer.to,
-      //     }],
-      //   });
-      // } else {
-      //   const history = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].history;
-      //   const lastBlockNumber = history[history.length - 1].blockNumber;
-      //   const lastLogIndex = history[history.length - 1].logIndex;
-      //   if ((transfer.blockNumber > lastBlockNumber)  || ((transfer.blockNumber == lastBlockNumber) && (transfer.logInfo > lastLogIndex))) {
-      //     // console.log("lastBlockNumber: " + lastBlockNumber + " vs blockNumber: " + transfer.blockNumber);
-      //     // console.log("lastLogIndex: " + lastLogIndex + " vs logIndex: " + transfer.logIndex);
-      //     Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'owner', transfer.to);
-      //     history.push({
-      //       blockNumber: transfer.blockNumber,
-      //       logIndex: transfer.logIndex,
-      //       timestamp: transfer.timestamp,
-      //       from: transfer.from,
-      //       to: transfer.to,
-      //     });
-      //     Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'history', history);
-      //   }
+    updateTokenMetadata(state, token) {
+      logInfo("dataModule", "mutations.updateTokenMetadata token: " + JSON.stringify(token, null, 2));
+      if (token.tokenId in state.tokens[token.chainId][token.contract]) {
+        Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'name', token.name);
+        Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'description', token.description);
+        Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'expiry', token.expiry);
+        Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'attributes', token.attributes);
+        Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'image', token.image);
       }
     },
 
@@ -834,10 +806,10 @@ const dataModule = {
       if (Object.keys(context.state.stealthTransfers).length == 0) {
         const db0 = new Dexie(context.state.db.name);
         db0.version(context.state.db.version).stores(context.state.db.schemaDefinition);
-        for (let type of ['addresses', 'tokens' /*, 'attributeFilter', 'selectedCollection', 'idFilter', 'ownerFilter', 'collections', 'showSideFilter', 'collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers', 'ens' */]) {
+        for (let type of ['addresses', 'timestamps', 'txs', 'tokens' /*, 'attributeFilter', 'selectedCollection', 'idFilter', 'ownerFilter', 'collections', 'showSideFilter', 'collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers', 'ens' */]) {
           const data = await db0.cache.where("objectName").equals(type).toArray();
           if (data.length == 1) {
-            // logInfo("dataModule", "actions.restoreState " + type + " => " + JSON.stringify(data[0].object));
+            logInfo("dataModule", "actions.restoreState " + type + " => " + JSON.stringify(data[0].object));
             context.commit('setState', { name: type, data: data[0].object });
           }
         }
@@ -996,7 +968,7 @@ const dataModule = {
       const confirmations = store.getters['config/settings'].confirmations && parseInt(store.getters['config/settings'].confirmations) || 10;
       const blockNumber = block && block.number || null;
       const cryptoCompareAPIKey = store.getters['config/settings'].cryptoCompareAPIKey && store.getters['config/settings'].cryptoCompareAPIKey.length > 0 && store.getters['config/settings'].cryptoCompareAPIKey || null;
-      const processFilters = store.getters['config/processFilters'];
+      // const processFilters = store.getters['config/processFilters'];
 
       const accountsToSync = [];
       // for (const [account, addressData] of Object.entries(context.state.accounts)) {
@@ -1017,17 +989,21 @@ const dataModule = {
         await context.dispatch('syncENSEvents', parameter);
       }
 
-      if (options.ensNames && !options.devThing) {
-        await context.dispatch('syncENSEventsData', parameter);
+      if (options.ensNames) {
+        await context.dispatch('syncENSEventTimestamps', parameter);
       }
 
-      if (options.ensNames && !options.devThing) {
-        await context.dispatch('collateIt', parameter);
-      }
+      // if (options.ensNames && !options.devThing) {
+      //   await context.dispatch('syncENSEventsData', parameter);
+      // }
 
-      if (options.devThing || options.ensNames) {
-        await context.dispatch('syncMetadata', parameter);
-      }
+      // if (options.ensNames && !options.devThing) {
+      //   await context.dispatch('collateIt', parameter);
+      // }
+
+      // if (options.devThing || options.ensNames) {
+      //   await context.dispatch('syncMetadata', parameter);
+      // }
 
       // if (options.ens) {
       //   await context.dispatch('syncENS', parameter);
@@ -1183,7 +1159,7 @@ const dataModule = {
         }
       }
       logInfo("dataModule", "actions.syncENSEvents BEGIN");
-      context.commit('setSyncSection', { section: 'Token Events', total: null });
+      context.commit('setSyncSection', { section: 'ENS Events', total: null });
       // this.sync.completed = 0;
       // this.sync.total = 0;
       // this.sync.section = 'ERC-20 & ERC-721 Tokens';
@@ -1208,6 +1184,189 @@ const dataModule = {
       }
       logInfo("dataModule", "actions.syncENSEvents END");
     },
+
+    async syncENSEventTimestamps(context, parameter) {
+      logInfo("dataModule", "actions.syncENSEventTimestamps: " + JSON.stringify(parameter));
+      const db = new Dexie(context.state.db.name);
+      db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      let rows = 0;
+      let done = false;
+      const existingTimestamps = context.state.timestamps[parameter.chainId] || {};
+      const newBlocks = {};
+      do {
+        let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+        logInfo("dataModule", "actions.syncENSEventTimestamps - data.length: " + data.length + ", first[0..9]: " + JSON.stringify(data.slice(0, 10).map(e => e.blockNumber + '.' + e.logIndex )));
+        for (const item of data) {
+          if (!(item.blockNumber in existingTimestamps) && !(item.blockNumber in newBlocks)) {
+            newBlocks[item.blockNumber] = true;
+          }
+        }
+        rows += data.length;
+        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      } while (!done);
+      const total = Object.keys(newBlocks).length;
+      logInfo("dataModule", "actions.syncENSEventTimestamps - total: " + total);
+      context.commit('setSyncSection', { section: 'ENS Event Timestamps', total });
+
+      let completed = 0;
+      for (let blockNumber of Object.keys(newBlocks)) {
+        const block = await provider.getBlock(parseInt(blockNumber));
+        context.commit('addTimestamp', {
+          chainId: parameter.chainId,
+          blockNumber,
+          timestamp: block.timestamp,
+        });
+        completed++;
+        context.commit('setSyncCompleted', completed);
+        if (context.state.sync.halt) {
+          break;
+        }
+      }
+
+      // let rows = 0;
+      // do {
+      //   let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+      //   logInfo("dataModule", "actions.syncENSEventTimestamps - data.length: " + data.length + ", first[0..9]: " + JSON.stringify(data.slice(0, 10).map(e => e.blockNumber + '.' + e.logIndex )));
+      //   const records = [];
+      //   for (const item of data) {
+      //     if (item.timestamp == null) {
+      //       const block = await provider.getBlock(item.blockNumber);
+      //       item.timestamp = block.timestamp;
+      //       const tx = await provider.getTransaction(item.txHash);
+      //       const txReceipt = await provider.getTransactionReceipt(item.txHash);
+      //       item.tx = {
+      //         type: tx.type,
+      //         blockHash: tx.blockHash,
+      //         from: tx.from,
+      //         gasPrice: ethers.BigNumber.from(tx.gasPrice).toString(),
+      //         gasLimit: ethers.BigNumber.from(tx.gasLimit).toString(),
+      //         to: tx.to,
+      //         value: ethers.BigNumber.from(tx.value).toString(),
+      //         nonce: tx.nonce,
+      //         data: tx.to && tx.data || null, // Remove contract creation data to reduce memory footprint
+      //         chainId: tx.chainId,
+      //         contractAddress: txReceipt.contractAddress,
+      //         transactionIndex: txReceipt.transactionIndex,
+      //         gasUsed: ethers.BigNumber.from(txReceipt.gasUsed).toString(),
+      //         blockHash: txReceipt.blockHash,
+      //         logs: txReceipt.logs,
+      //         cumulativeGasUsed: ethers.BigNumber.from(txReceipt.cumulativeGasUsed).toString(),
+      //         effectiveGasPrice: ethers.BigNumber.from(txReceipt.effectiveGasPrice).toString(),
+      //         status: txReceipt.status,
+      //         type: txReceipt.type,
+      //       };
+      //       records.push(item);
+      //     }
+      //     rows++;
+      //     context.commit('setSyncCompleted', rows);
+      //   }
+      //   if (records.length > 0) {
+      //     await db.tokenEvents.bulkPut(records).then (function() {
+      //     }).catch(function(error) {
+      //       console.log("syncENSEventTimestamps.bulkPut error: " + error);
+      //     });
+      //   }
+      //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      // } while (!done && !context.state.sync.halt);
+      console.log("context.state.timestamps: " + JSON.stringify(context.state.timestamps, null, 2));
+
+      await context.dispatch('saveData', ['timestamps']);
+      logInfo("dataModule", "actions.syncENSEventTimestamps END");
+    },
+
+    async syncENSEventTxData(context, parameter) {
+      logInfo("dataModule", "actions.syncENSEventTxData: " + JSON.stringify(parameter));
+      const db = new Dexie(context.state.db.name);
+      db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      let rows = 0;
+      let done = false;
+      const existingTimestamps = context.state.timestamps[parameter.chainId] || {};
+      const newBlocks = {};
+      do {
+        let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+        logInfo("dataModule", "actions.syncENSEventTxData - data.length: " + data.length + ", first[0..9]: " + JSON.stringify(data.slice(0, 10).map(e => e.blockNumber + '.' + e.logIndex )));
+        for (const item of data) {
+          if (!(item.blockNumber in existingTimestamps) && !(item.blockNumber in newBlocks)) {
+            newBlocks[item.blockNumber] = true;
+          }
+        }
+        rows += data.length;
+        done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      } while (!done);
+      const total = Object.keys(newBlocks).length;
+      logInfo("dataModule", "actions.syncENSEventTxData - total: " + total);
+      context.commit('setSyncSection', { section: 'ENS Event Timestamps', total });
+
+      let completed = 0;
+      for (let blockNumber of Object.keys(newBlocks)) {
+        // console.log(blockNumber);
+        const block = await provider.getBlock(parseInt(blockNumber));
+        context.commit('addTimestamp', {
+          chainId: parameter.chainId,
+          blockNumber,
+          timestamp: block.timestamp,
+        });
+        completed++;
+        context.commit('setSyncCompleted', completed);
+        if (context.state.sync.halt) {
+          break;
+        }
+      }
+
+      // let rows = 0;
+      // do {
+      //   let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
+      //   logInfo("dataModule", "actions.syncENSEventTxData - data.length: " + data.length + ", first[0..9]: " + JSON.stringify(data.slice(0, 10).map(e => e.blockNumber + '.' + e.logIndex )));
+      //   const records = [];
+      //   for (const item of data) {
+      //     if (item.timestamp == null) {
+      //       const block = await provider.getBlock(item.blockNumber);
+      //       item.timestamp = block.timestamp;
+      //       const tx = await provider.getTransaction(item.txHash);
+      //       const txReceipt = await provider.getTransactionReceipt(item.txHash);
+      //       item.tx = {
+      //         type: tx.type,
+      //         blockHash: tx.blockHash,
+      //         from: tx.from,
+      //         gasPrice: ethers.BigNumber.from(tx.gasPrice).toString(),
+      //         gasLimit: ethers.BigNumber.from(tx.gasLimit).toString(),
+      //         to: tx.to,
+      //         value: ethers.BigNumber.from(tx.value).toString(),
+      //         nonce: tx.nonce,
+      //         data: tx.to && tx.data || null, // Remove contract creation data to reduce memory footprint
+      //         chainId: tx.chainId,
+      //         contractAddress: txReceipt.contractAddress,
+      //         transactionIndex: txReceipt.transactionIndex,
+      //         gasUsed: ethers.BigNumber.from(txReceipt.gasUsed).toString(),
+      //         blockHash: txReceipt.blockHash,
+      //         logs: txReceipt.logs,
+      //         cumulativeGasUsed: ethers.BigNumber.from(txReceipt.cumulativeGasUsed).toString(),
+      //         effectiveGasPrice: ethers.BigNumber.from(txReceipt.effectiveGasPrice).toString(),
+      //         status: txReceipt.status,
+      //         type: txReceipt.type,
+      //       };
+      //       records.push(item);
+      //     }
+      //     rows++;
+      //     context.commit('setSyncCompleted', rows);
+      //   }
+      //   if (records.length > 0) {
+      //     await db.tokenEvents.bulkPut(records).then (function() {
+      //     }).catch(function(error) {
+      //       console.log("syncENSEventTxData.bulkPut error: " + error);
+      //     });
+      //   }
+      //   done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
+      // } while (!done && !context.state.sync.halt);
+      console.log("context.state.timestamps: " + JSON.stringify(context.state.timestamps, null, 2));
+
+      await context.dispatch('saveData', ['timestamps']);
+      logInfo("dataModule", "actions.syncENSEventTxData END");
+    },
+
+
 
     async syncENSEventsData(context, parameter) {
       logInfo("dataModule", "actions.syncENSEventsData: " + JSON.stringify(parameter));
