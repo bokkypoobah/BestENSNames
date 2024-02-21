@@ -463,6 +463,60 @@ const dataModule = {
       }
     },
 
+    updateTokenMetadata(state, info) {
+      logInfo("dataModule", "mutations.updateTokenMetadata info: " + JSON.stringify(info, null, 2));
+      // if (!(transfer.chainId in state.tokens)) {
+      //   Vue.set(state.tokens, transfer.chainId, {});
+      // }
+      // if (!(transfer.contract in state.tokens[transfer.chainId])) {
+      //   Vue.set(state.tokens[transfer.chainId], transfer.contract, {});
+      // }
+      if (info.tokenId in state.tokens[info.chainId][info.contract]) {
+        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'name', info.name);
+        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'description', info.description);
+        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'expiry', info.expiry);
+        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'attributes', info.attributes);
+        Vue.set(state.tokens[info.chainId][info.contract][info.tokenId], 'image', info.image);
+
+
+
+
+      //   Vue.set(state.tokens[transfer.chainId][transfer.contract], transfer.tokenId, {
+      //     name: null,
+      //     description: null,
+      //     expiry: null,
+      //     attributes: {},
+      //     imageSource: null,
+      //     image: null,
+      //     owner: transfer.to,
+      //     history: [{
+      //       blockNumber: transfer.blockNumber,
+      //       logIndex: transfer.logIndex,
+      //       timestamp: transfer.timestamp,
+      //       from: transfer.from,
+      //       to: transfer.to,
+      //     }],
+      //   });
+      // } else {
+      //   const history = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].history;
+      //   const lastBlockNumber = history[history.length - 1].blockNumber;
+      //   const lastLogIndex = history[history.length - 1].logIndex;
+      //   if ((transfer.blockNumber > lastBlockNumber)  || ((transfer.blockNumber == lastBlockNumber) && (transfer.logInfo > lastLogIndex))) {
+      //     // console.log("lastBlockNumber: " + lastBlockNumber + " vs blockNumber: " + transfer.blockNumber);
+      //     // console.log("lastLogIndex: " + lastLogIndex + " vs logIndex: " + transfer.logIndex);
+      //     Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'owner', transfer.to);
+      //     history.push({
+      //       blockNumber: transfer.blockNumber,
+      //       logIndex: transfer.logIndex,
+      //       timestamp: transfer.timestamp,
+      //       from: transfer.from,
+      //       to: transfer.to,
+      //     });
+      //     Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'history', history);
+      //   }
+      }
+    },
+
     addOrUpdateToken(state, token) {
       if (!(token.chainId in state.tokens)) {
         Vue.set(state.tokens, token.chainId, {});
@@ -1429,6 +1483,7 @@ const dataModule = {
         for (const [tokenId, tokenData] of Object.entries(contractData)) {
           if (tokenData.name) {
             completed++;
+            console.log(completed + " Completed " + tokenData.name);
           }
           total++;
         }
@@ -1460,17 +1515,16 @@ const dataModule = {
                 // console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
                 expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
               }
-
               const name = expired ? expiredName : (metadataFileContent.name || undefined);
               console.log("name: " + name);
               const description = expired ? ("Expired " + expiredName) : (metadataFileContent.description || undefined);
-              console.log("description: " + description);
-              console.log("expiry: " + expiry);
+              // console.log("description: " + description);
+              // console.log("expiry: " + expiry);
               const attributes = expired ? [] : (metadataFileContent.attributes || []);
               attributes.sort((a, b) => {
                 return ('' + a.trait_type).localeCompare(b.trait_type);
               });
-              console.log("attributes: " + JSON.stringify(attributes, null, 2));
+              // console.log("attributes: " + JSON.stringify(attributes, null, 2));
               const image = expired ? null : metadataFileContent.image;
               // const imageSource = expired ? null : metadataFileContent.image;
               // let image = null;
@@ -1479,35 +1533,29 @@ const dataModule = {
               //   const base64 = await imageUrlToBase64(imageFile);
               //   image = base64 || undefined;
               // }
-              console.log("image: " + JSON.stringify(image, null, 2));
+              // console.log("image: " + JSON.stringify(image, null, 2));
+              context.commit('updateTokenMetadata', {
+                chainId: parameter.chainId,
+                contract,
+                tokenId,
+                name,
+                description,
+                expiry,
+                attributes,
+                image,
+              });
 
-
-              // metadata.name = expired ? expiredName : (metadataFileContent.name || undefined);
-              // metadata.description = expired ? ("Expired " + expiredName) : (metadataFileContent.description || undefined);
-              // metadata.expiry = expiry;
-              // metadata.attributes = expired ? [] : (metadataFileContent.attributes || []);
-              // metadata.attributes.sort((a, b) => {
-              //   return ('' + a.trait_type).localeCompare(b.trait_type);
-              // });
-              // metadata.imageSource = expired ? null : metadataFileContent.image;
-              // if (!expired) {
-              //   const imageFile = metadataFileContent.image.substring(0, 7) == "ipfs://" ? "https://ipfs.io/ipfs/" + metadataFileContent.image.substring(7) : metadataFileContent.image;
-              //   const base64 = await imageUrlToBase64(imageFile);
-              //   metadata.image = base64 || undefined;
-              // } else {
-              //   metadata.image = null;
-              // }
             } catch (e) {
               console.error(e.message);
             }
             completed++;
             context.commit('setSyncCompleted', completed);
           }
-          if (context.state.sync.halt || completed > 5) {
+          if (context.state.sync.halt) {
             break;
           }
         }
-        if (context.state.sync.halt || completed > 5) {
+        if (context.state.sync.halt) {
           break;
         }
       }
