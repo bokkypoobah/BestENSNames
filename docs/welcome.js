@@ -98,7 +98,7 @@ const Welcome = {
                 <h6>This Web3 Dapp</h6>
                 <ul>
                   <li>
-                    <b-link href="https://bokkypoobah.github.io/NFTSpreads/" target="_blank">https://bokkypoobah.github.io/NFTSpreads/</b-link>
+                    <b-link href="https://bokkypoobah.github.io/BestENSNames/" target="_blank">https://bokkypoobah.github.io/BestENSNames/</b-link>
                   </li>
                 </ul>
               </b-card-text>
@@ -107,7 +107,7 @@ const Welcome = {
                 <h6>Source Code</h6>
                 <ul>
                   <li>
-                    <b-link href="https://github.com/bokkypoobah/NFTSpreads" target="_blank">https://github.com/bokkypoobah/NFTSpreads</b-link>
+                    <b-link href="https://github.com/bokkypoobah/BestENSNames" target="_blank">https://github.com/bokkypoobah/BestENSNames</b-link>
                   </li>
                 </ul>
               </b-card-text>

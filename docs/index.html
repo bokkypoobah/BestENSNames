@@ -2,17 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>NFT Spreads</title>
+    <title>Best ENS Names</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-    <meta name="description" content="NFT Spreads (c) Bok Consulting Pty Ltd 2024" />
+    <meta name="description" content="Best ENS Names (c) Bok Consulting Pty Ltd 2024" />
     <meta name="author" content="BokkyPooBah" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:site" content="@BokkyPooBah" />
     <meta name="twitter:creator" content="@BokkyPooBah" />
     <meta property="og:url" content="https://github.com/bokkypoobah/NFTSpreads/" />
-    <meta property="og:title" content="NFT Spreads (c) Bok Consulting Pty Ltd 2024" />
-    <meta property="og:description" content="NFT Spreads (c) Bok Consulting Pty Ltd 2024" />
+    <meta property="og:title" content="Best ENS Names (c) Bok Consulting Pty Ltd 2024" />
+    <meta property="og:description" content="Best ENS Names (c) Bok Consulting Pty Ltd 2024" />
     <meta property="og:image" content="https://bokkypoobah.github.io/NFTSpreads/images/LarvaChad_1532_zoomed.png" />
     <link type="text/css" rel="stylesheet" href="css/bootstrap.min.css" />
     <link type="text/css" rel="stylesheet" href="css/bootstrap-vue.min.css"/>
@@ -95,23 +95,18 @@
         <div>
           <b-navbar variant="light" fixed="top" class="mx-1 my-0 p-0">
             <b-navbar-brand href="https://bokkypoobah.github.io/NFTSpreads/" variant="primary">
-              <b-avatar rounded variant="light" size="3.0rem" src="images/LarvaChad_1532_gm-300x300.gif" v-b-popover.hover.bottom="'gm'" class="ml-0"></b-avatar>
-              <em v-b-popover.hover.bottom="'gm gm gm'">NFT Spreads</em>
+              <b-avatar rounded variant="light" size="3.0rem" src="images/frank_1367.gif" v-b-popover.hover.bottom="'gm'" class="ml-0"></b-avatar>
+              <em v-b-popover.hover.bottom="'gm gm gm'">Best ENS Names</em>
             </b-navbar-brand>
             <b-navbar-nav class="ml-auto">
               <!-- <b-nav-item size="sm" to="/" active-class="active" v-b-popover.hover="'Welcome'">Home</b-nav-item> -->
-              <b-nav-item size="sm" to="/collections" active-class="active" v-b-popover.hover="'View/edit collections'">Collections</b-nav-item>
-              <b-nav-item size="sm" to="/tokens" active-class="active" v-b-popover.hover="'View NFTs'">Tokens</b-nav-item>
-              <b-nav-item size="sm" to="/owners" active-class="active" v-b-popover.hover="'View NFT owners'">Owners</b-nav-item>
-              <b-nav-item size="sm" to="/sales" active-class="active" v-b-popover.hover="'View sales'">Sales</b-nav-item>
-              <b-nav-item size="sm" to="/listings" active-class="active" v-b-popover.hover="'View listings'">Listings</b-nav-item>
-              <b-nav-item size="sm" to="/offers" active-class="active" v-b-popover.hover="'View offers'">Offers</b-nav-item>
-              <!-- <b-nav-item size="sm" to="/addresses" active-class="active" v-b-popover.hover="'View/edit addresses'"><strike>Addresses</strike></b-nav-item> -->
-              <!-- <b-nav-item size="sm" to="/erc20s" active-class="active" v-b-popover.hover="'ERC-20 Fungible Tokens'"><strike>Fungible Tokens</strike></b-nav-item> -->
-              <!-- <b-nav-item size="sm" to="/erc721s" active-class="active" v-b-popover.hover="'ERC-721 Non-Fungible Tokens'"><strike>Non-Fungible Tokens</strike></b-nav-item> -->
-              <!-- <b-nav-item size="sm" to="/registry" active-class="active" v-b-popover.hover="'Registry of Addresses to Stealth Meta-Addresses'"><strike>Registry</strike></b-nav-item> -->
-              <!-- <b-nav-item size="sm" to="/stealthtransfers" active-class="active" v-b-popover.hover="'Stealth Transfers'"><strike>Stealth Transfers</strike></b-nav-item> -->
-              <!-- <b-nav-item size="sm" to="/config" active-class="active" v-b-popover.hover="'Configuration'"><strike>Config</strike></b-nav-item> -->
+              <b-nav-item size="sm" to="/addresses" active-class="active" v-b-popover.hover="'View/edit addresses'">Addresses</b-nav-item>
+              <!-- <b-nav-item size="sm" to="/collections" active-class="active" v-b-popover.hover="'View/edit collections'">Collections</b-nav-item> -->
+              <!-- <b-nav-item size="sm" to="/tokens" active-class="active" v-b-popover.hover="'View NFTs'">Tokens</b-nav-item> -->
+              <!-- <b-nav-item size="sm" to="/owners" active-class="active" v-b-popover.hover="'View NFT owners'">Owners</b-nav-item> -->
+              <!-- <b-nav-item size="sm" to="/sales" active-class="active" v-b-popover.hover="'View sales'">Sales</b-nav-item> -->
+              <!-- <b-nav-item size="sm" to="/listings" active-class="active" v-b-popover.hover="'View listings'">Listings</b-nav-item> -->
+              <!-- <b-nav-item size="sm" to="/offers" active-class="active" v-b-popover.hover="'View offers'">Offers</b-nav-item> -->
               <b-nav-form>
                 <b-button size="sm" variant="link" class="ml-4" v-b-popover.hover="'Power up this app'" @click="setPowerOn();" v-if="!powerOn"><b-icon-power shift-v="-1" font-scale="1.5"></b-icon-power></b-button>
                 <b-button size="sm" variant="link" v-b-popover.hover="'Show status'" v-b-toggle.sidebar-status v-if="powerOn"><b-icon-layout-sidebar-reverse class="ml-4 mr-2" shift-v="-1" font-scale="1.3"></b-icon-layout-sidebar-reverse><b-spinner class="m-0" :variant="spinnerVariant" v-if="powerOn" style="animation: spinner-grow 3.75s linear infinite;" small type="grow" label="Spinning"></b-spinner></b-button>
@@ -162,7 +157,7 @@
         <hr />
         <b-card no-header body-class="m-0 p-0" class="m-0 p-0 border-0">
           <b-card-text class="text-right">
-            gm, and enjoy! <i>NFT Spreads</i> &copy; Bok Consulting Pty Ltd 2024
+            gm, and enjoy! <i>Best ENS Names</i> &copy; Bok Consulting Pty Ltd 2024
           </b-card-text>
         </b-card>
       </b-container>

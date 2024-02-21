@@ -733,7 +733,7 @@ const dataModule = {
       if (Object.keys(context.state.stealthTransfers).length == 0) {
         const db0 = new Dexie(context.state.db.name);
         db0.version(context.state.db.version).stores(context.state.db.schemaDefinition);
-        for (let type of ['attributeFilter', 'selectedCollection', 'idFilter', 'ownerFilter', 'collections', 'showSideFilter', 'collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers', 'ens']) {
+        for (let type of ['addresses' /*, 'attributeFilter', 'selectedCollection', 'idFilter', 'ownerFilter', 'collections', 'showSideFilter', 'collection', 'tokens', 'attributes', 'owners', 'sales', 'listings', 'offers', 'ens' */]) {
           const data = await db0.cache.where("objectName").equals(type).toArray();
           if (data.length == 1) {
             // logInfo("dataModule", "actions.restoreState " + type + " => " + JSON.stringify(data[0].object));

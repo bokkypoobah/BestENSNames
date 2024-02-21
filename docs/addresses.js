@@ -193,8 +193,8 @@ const Addresses = {
                   <ul>
                     <li>Add your attached web3 address</li>
                     <li>Add an address</li>
-                    <li>Add a Stealth Meta-Address</li>
-                    <li>Generate a Stealth Meta-Address</li>
+                    <!-- <li>Add a Stealth Meta-Address</li> -->
+                    <!-- <li>Generate a Stealth Meta-Address</li> -->
                   </ul>
                 </li>
               </ul>

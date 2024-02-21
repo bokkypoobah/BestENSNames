@@ -56,8 +56,8 @@ const NewAddress = {
       newAccountActions: [
         { value: 'addCoinbase', text: 'Add Attached Web3 Address' },
         { value: 'addAddress', text: 'Add Address' },
-        { value: 'addStealthMetaAddress', text: 'Add Stealth Meta-Address' },
-        { value: 'generateStealthMetaAddress', text: 'Generate Stealth Meta-Address' },
+        // { value: 'addStealthMetaAddress', text: 'Add Stealth Meta-Address' },
+        // { value: 'generateStealthMetaAddress', text: 'Generate Stealth Meta-Address' },
       ],
     }
   },
