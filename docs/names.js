@@ -167,6 +167,10 @@ const Names = {
                 <b-form-tags size="sm" @input="saveTokenTag({ chainId, contract: data.item.contract, tokenId: data.item.tokenId, tags: $event })" v-model="data.item.tags" tag-variant="primary" tag-pills separator=" " v-b-popover.hover="'Enter tags'" placeholder="" class="mt-2"></b-form-tags>
               </template>
 
+              <template #cell(expiry)="data">
+                <font size="-1">{{ formatTimestamp(data.item.expiry) }}</font>
+              </template>
+
               <template #cell(attributes)="data">
                 <!-- {{ data.item.attributes }} -->
                 <b-row v-for="(attribute, i) in data.item.attributes"  v-bind:key="i" class="m-0 p-0">
@@ -193,7 +197,7 @@ const Names = {
         favouritesOnly: false,
         currentPage: 1,
         pageSize: 100,
-        sortOption: 'tokenidasc',
+        sortOption: 'nameasc',
         version: 0,
       },
       transfer: {
@@ -204,6 +208,10 @@ const Names = {
         selectedFaucet: null,
       },
       sortOptions: [
+        { value: 'nameasc', text: '▲ Name' },
+        { value: 'namedsc', text: '▼ Name' },
+        { value: 'expiryasc', text: '▲ Expiry' },
+        { value: 'expirydsc', text: '▼ Expiry' },
         { value: 'tokenidasc', text: '▲ TokenId' },
         { value: 'tokeniddsc', text: '▼ TokenId' },
       ],
@@ -212,8 +220,9 @@ const Names = {
         // { key: 'tokenId', label: 'TokenId', sortable: false, thStyle: 'width: 16%;', thClass: 'text-left', tdClass: 'text-truncate' },
         { key: 'image', label: 'Image', sortable: false, thStyle: 'width: 10%;', thClass: 'text-left', tdClass: 'text-truncate' },
         { key: 'name', label: 'Name/Description', sortable: false, thStyle: 'width: 25%;', thClass: 'text-left', tdClass: 'text-left' },
-        { key: 'owner', label: 'Owner/Tags', sortable: false, thStyle: 'width: 30%;', thClass: 'text-left', tdClass: 'text-left' },
-        { key: 'attributes', label: 'Attributes', sortable: false, thStyle: 'width: 30%;', thClass: 'text-left', tdClass: 'text-left' },
+        { key: 'owner', label: 'Owner/Tags', sortable: false, thStyle: 'width: 20%;', thClass: 'text-left', tdClass: 'text-left' },
+        { key: 'expiry', label: 'Expiry', sortable: false, thStyle: 'width: 15%;', thClass: 'text-left', tdClass: 'text-left' },
+        { key: 'attributes', label: 'Attributes', sortable: false, thStyle: 'width: 25%;', thClass: 'text-left', tdClass: 'text-left' },
       ],
     }
   },
@@ -377,7 +386,23 @@ const Names = {
     },
     filteredSortedItems() {
       const results = this.filteredItems;
-      if (this.settings.sortOption == 'tokenidasc') {
+      if (this.settings.sortOption == 'nameasc') {
+        results.sort((a, b) => {
+          return ('' + a.name).localeCompare(b.name);
+        });
+      } else if (this.settings.sortOption == 'namedsc') {
+        results.sort((a, b) => {
+          return ('' + b.name).localeCompare(a.name);
+        });
+      } else if (this.settings.sortOption == 'expiryasc') {
+        results.sort((a, b) => {
+          return a.expiry - b.expiry;
+        });
+      } else if (this.settings.sortOption == 'expirydsc') {
+        results.sort((a, b) => {
+          return b.expiry - a.expiry;
+        });
+      } else if (this.settings.sortOption == 'tokenidasc') {
         results.sort((a, b) => {
           return a.tokenId - b.tokenId;
         });
