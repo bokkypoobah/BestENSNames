@@ -443,7 +443,6 @@ const dataModule = {
           history: [{
             blockNumber: transfer.blockNumber,
             logIndex: transfer.logIndex,
-            timestamp: transfer.timestamp,
             from: transfer.from,
             to: transfer.to,
           }],

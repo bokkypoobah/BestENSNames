@@ -325,6 +325,7 @@ const Names = {
     },
 
     totalCollections() {
+      console.log("this.tokens: " + JSON.stringify(this.tokens, null, 2));
       const tokens = this.tokens[this.chainId] && this.tokens[this.chainId][this.selectedCollection] || {};
       return (store.getters['data/forceRefresh'] % 2) == 0 ? Object.keys(tokens).length : Object.keys(tokens).length;
     },
