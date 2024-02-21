@@ -210,6 +210,10 @@ const Names = {
       sortOptions: [
         { value: 'nameasc', text: '▲ Name' },
         { value: 'namedsc', text: '▼ Name' },
+        { value: 'createdasc', text: '▲ Created' },
+        { value: 'createddsc', text: '▼ Created' },
+        { value: 'registrationasc', text: '▲ Registration' },
+        { value: 'registrationdsc', text: '▼ Registration' },
         { value: 'expiryasc', text: '▲ Expiry' },
         { value: 'expirydsc', text: '▼ Expiry' },
         { value: 'tokenidasc', text: '▲ TokenId' },
@@ -356,13 +360,17 @@ const Names = {
       const results = (store.getters['data/forceRefresh'] % 2) == 0 ? [] :[];
       for (const [contract, contractData] of Object.entries(this.tokens[this.chainId] || {})) {
         for (const [tokenId, token] of Object.entries(contractData)) {
-          // console.log(contract + "/" + tokenId + " => " + JSON.stringify(token, null, 2));
+          // if (tokenId == "93564985964027200755770835742089172337336281912347672927492217815889691832461") {
+          //   console.log(contract + "/" + tokenId + " => " + JSON.stringify(token, null, 2));
+          // }
           results.push({
             chainId: this.chainId,
             contract,
             tokenId,
             name: token.name,
             description: token.description,
+            created: token.created,
+            registration: token.registration,
             expiry: token.expiry,
             attributes: token.attributes,
             image: token.image,
@@ -394,6 +402,28 @@ const Names = {
         results.sort((a, b) => {
           return ('' + b.name).localeCompare(a.name);
         });
+      } else if (this.settings.sortOption == 'createdasc') {
+        // console.log("createdasc");
+        results.sort((a, b) => {
+          const dateA = a.created || 0;
+          const dateB = b.created || 0;
+          return dateA - dateB;
+        });
+      } else if (this.settings.sortOption == 'createddsc') {
+        // console.log("createddsc");
+        results.sort((a, b) => {
+          const dateA = a.created || 0;
+          const dateB = b.created || 0;
+          return dateB - dateA;
+        });
+      } else if (this.settings.sortOption == 'registrationasc') {
+        results.sort((a, b) => {
+          return a.registration - b.registration;
+        });
+      } else if (this.settings.sortOption == 'registrationdsc') {
+        results.sort((a, b) => {
+          return b.registration - a.registration;
+        });
       } else if (this.settings.sortOption == 'expiryasc') {
         results.sort((a, b) => {
           return a.expiry - b.expiry;
@@ -414,7 +444,7 @@ const Names = {
       return results;
     },
     pagedFilteredSortedItems() {
-      logInfo("Names", "pagedFilteredSortedItems - results[0..1]: " + JSON.stringify(this.filteredSortedItems.slice(0, 2), null, 2));
+      // logInfo("Names", "pagedFilteredSortedItems - results[0..1]: " + JSON.stringify(this.filteredSortedItems.slice(0, 2), null, 2));
       return this.filteredSortedItems.slice((this.settings.currentPage - 1) * this.settings.pageSize, this.settings.currentPage * this.settings.pageSize);
     },
 

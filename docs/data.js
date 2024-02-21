@@ -435,6 +435,8 @@ const dataModule = {
         Vue.set(state.tokens[transfer.chainId][transfer.contract], transfer.tokenId, {
           name: null,
           description: null,
+          created: null,
+          registration: null,
           expiry: null,
           attributes: {},
           imageSource: null,
@@ -498,6 +500,7 @@ const dataModule = {
         Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'expiry', token.expiry);
         Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'attributes', token.attributes);
         Vue.set(state.tokens[token.chainId][token.contract][token.tokenId], 'image', token.image);
+        // logInfo("dataModule", "mutations.updateTokenMetadata token NEW: " + JSON.stringify(state.tokens[token.chainId][token.contract][token.tokenId], null, 2));
       }
     },
 
@@ -998,23 +1001,23 @@ const dataModule = {
 
       const parameter = { chainId, coinbase, blockNumber, confirmations, cryptoCompareAPIKey, ...options };
 
-      if (options.ensNames && !options.devThing) {
+      if (options.events && !options.devThing) {
         await context.dispatch('syncENSEvents', parameter);
       }
 
-      if (options.ensNames && !options.devThing) {
+      if (options.timestamps && !options.devThing) {
         await context.dispatch('syncENSEventTimestamps', parameter);
       }
 
-      if (options.ensNames && !options.devThing) {
+      if (options.txData && !options.devThing) {
         await context.dispatch('syncENSEventTxData', parameter);
       }
 
-      if (options.ensNames && !options.devThing) {
+      if ((options.events || options.timestamps || options.txData) && !options.devThing) {
         await context.dispatch('collateIt', parameter);
       }
 
-      if (options.devThing || options.ensNames) {
+      if (options.metadata && !options.devThing) {
         await context.dispatch('syncMetadata', parameter);
       }
 
@@ -1330,7 +1333,7 @@ const dataModule = {
         rows = parseInt(rows) + data.length;
         done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
       } while (!done);
-      console.log("context.state.tokens: " + JSON.stringify(context.state.tokens, null, 2));
+      // console.log("context.state.tokens: " + JSON.stringify(context.state.tokens, null, 2));
 
 
       // do {
@@ -1521,7 +1524,7 @@ const dataModule = {
       total = 0;
       for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId])) {
         for (const [tokenId, tokenData] of Object.entries(contractData)) {
-          if (!tokenData.name) {
+          if (!tokenData.name /*&& tokenId == "93564985964027200755770835742089172337336281912347672927492217815889691832461"*/) {
             // console.log(contract + "/" + tokenId + " = > " + JSON.stringify(tokenData));
             const tokenURI = "https://metadata.ens.domains/mainnet/" + contract + "/" + tokenId;
             console.log(tokenURI);
@@ -1554,7 +1557,6 @@ const dataModule = {
                 expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
               }
               const name = expired ? expiredName : (metadataFileContent.name || undefined);
-              console.log("name: " + name);
               const description = expired ? ("Expired " + expiredName) : (metadataFileContent.description || undefined);
               // console.log("description: " + description);
               // console.log("expiry: " + expiry);
@@ -1572,6 +1574,7 @@ const dataModule = {
               //   image = base64 || undefined;
               // }
               // console.log("image: " + JSON.stringify(image, null, 2));
+              console.log("name: " + name + ", created: " + created + ", registration: " + registration + ", expiry: " + expiry);
               context.commit('updateTokenMetadata', {
                 chainId: parameter.chainId,
                 contract,

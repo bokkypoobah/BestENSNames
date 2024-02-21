@@ -4,7 +4,10 @@ const SyncOptions = {
       <b-modal ref="syncoptions" v-model="show" hide-footer body-bg-variant="light" size="sm">
         <template #modal-title>Sync Data</template>
 
-        <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.ensNames" @input="saveSettings" v-b-popover.hover="'ENS Names'" class="ml-2 mt-1">ENS Names</b-form-checkbox>
+        <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.events" @input="saveSettings" v-b-popover.hover="'ENS Name Transfer Events'" class="ml-2 mt-1">Transfer Events</b-form-checkbox>
+        <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.timestamps" @input="saveSettings" v-b-popover.hover="'ENS Name Transfer Event Timestamps'" class="ml-2 mt-1">Timestamps</b-form-checkbox>
+        <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.txData" @input="saveSettings" v-b-popover.hover="'ENS Name Transfer Event Transaction Data'" class="ml-2 mt-1">Transaction Data</b-form-checkbox>
+        <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.metadata" @input="saveSettings" v-b-popover.hover="'ENS Name Metadata'" class="ml-2 mt-1">Metadata</b-form-checkbox>
 
         <!-- <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.collection" @input="saveSettings" v-b-popover.hover="'NFT Collection'" class="ml-2 mt-1">Collection</b-form-checkbox>
         <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.collectionSales" @input="saveSettings" v-b-popover.hover="'NFT Collection Sales'" class="ml-2 mt-1">Collection Sales</b-form-checkbox>
@@ -34,7 +37,10 @@ const SyncOptions = {
   data: function () {
     return {
       settings: {
-        ensNames: true,
+        events: true,
+        timestamps: true,
+        txData: true,
+        metadata: true,
 
         collection: true,
         collectionSales: true,
@@ -84,7 +90,11 @@ const SyncOptions = {
     },
     syncNow() {
       store.dispatch('data/syncIt', {
-        ensNames: this.settings.ensNames,
+        events: this.settings.events,
+        timestamps: this.settings.timestamps,
+        txData: this.settings.txData,
+        metadata: this.settings.metadata,
+
         // collection: this.settings.collection,
         // collectionSales: this.settings.collectionSales,
         // collectionListings: this.settings.collectionListings,
