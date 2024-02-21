@@ -911,29 +911,33 @@ const dataModule = {
 
       const parameter = { chainId, coinbase, blockNumber, confirmations, cryptoCompareAPIKey, ...options };
 
-      if (options.collection) {
-        await context.dispatch('syncCollection', parameter);
+      if (options.ensNames) {
+        await context.dispatch('syncENSEvents', parameter);
       }
 
-      if (options.collectionSales) {
-        await context.dispatch('syncCollectionSales', parameter);
-      }
+      // if (options.collection) {
+      //   await context.dispatch('syncCollection', parameter);
+      // }
 
-      if (options.collectionListings) {
-        await context.dispatch('syncCollectionListings', parameter);
-      }
+      // if (options.collectionSales) {
+      //   await context.dispatch('syncCollectionSales', parameter);
+      // }
 
-      if (options.collectionOffers) {
-        await context.dispatch('syncCollectionOffers', parameter);
-      }
+      // if (options.collectionListings) {
+      //   await context.dispatch('syncCollectionListings', parameter);
+      // }
 
-      if (options.devThing || options.collection || options.collectionSales || options.collectionListings || options.collectionOffers) {
-        await context.dispatch('collateIt', parameter);
-      }
+      // if (options.collectionOffers) {
+      //   await context.dispatch('syncCollectionOffers', parameter);
+      // }
 
-      if (options.ens) {
-        await context.dispatch('syncENS', parameter);
-      }
+      // if (options.devThing || options.collection || options.collectionSales || options.collectionListings || options.collectionOffers) {
+      //   await context.dispatch('collateIt', parameter);
+      // }
+
+      // if (options.ens) {
+      //   await context.dispatch('syncENS', parameter);
+      // }
 
       // if (options.devThing) {
       //   console.log("Dev Thing");
@@ -943,6 +947,13 @@ const dataModule = {
       context.commit('setSyncSection', { section: null, total: null });
       context.commit('setSyncHalt', false);
       context.commit('forceRefresh');
+    },
+
+    async syncENSEvents(context, parameter) {
+      logInfo("dataModule", "actions.syncENSEvents BEGIN: " + JSON.stringify(parameter));
+      const db = new Dexie(context.state.db.name);
+      db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
     },
 
     async syncCollection(context, parameter) {
