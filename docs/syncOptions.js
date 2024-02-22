@@ -6,6 +6,7 @@ const SyncOptions = {
 
         <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.erc721Events" @input="saveSettings" v-b-popover.hover="'ENS ERC-721 Transfer Events'" class="ml-2 mt-1">ENS Transfers</b-form-checkbox>
         <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.erc1155Events" @input="saveSettings" v-b-popover.hover="'ENS ERC-1155 NameWrapper Transfer Events'" class="ml-2 mt-1">ENS NameWrapper Transfers</b-form-checkbox>
+        <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.renewalEvents" @input="saveSettings" v-b-popover.hover="'ENS Renewal Events'" class="ml-2 mt-1">ENS Renewals</b-form-checkbox>
         <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.timestamps" @input="saveSettings" v-b-popover.hover="'ENS Name Transfer Event Timestamps'" class="ml-2 mt-1">Timestamps</b-form-checkbox>
         <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.txData" @input="saveSettings" v-b-popover.hover="'ENS Name Transfer Event Transaction Data'" class="ml-2 mt-1">Transaction Data</b-form-checkbox>
         <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.metadata" @input="saveSettings" v-b-popover.hover="'ENS Name Metadata'" class="ml-2 mt-1">Metadata</b-form-checkbox>
@@ -40,6 +41,7 @@ const SyncOptions = {
       settings: {
         erc721Events: true,
         erc1155Events: true,
+        renewalEvents: true,
         timestamps: true,
         txData: true,
         metadata: true,
@@ -94,6 +96,7 @@ const SyncOptions = {
       store.dispatch('data/syncIt', {
         erc721Events: this.settings.erc721Events,
         erc1155Events: this.settings.erc1155Events,
+        renewalEvents: this.settings.renewalEvents,
         timestamps: this.settings.timestamps,
         txData: this.settings.txData,
         metadata: this.settings.metadata,

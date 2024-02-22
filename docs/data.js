@@ -1013,7 +1013,7 @@ const dataModule = {
 
       const parameter = { chainId, coinbase, blockNumber, confirmations, cryptoCompareAPIKey, ...options };
 
-      if ((options.erc721Events || options.erc1155Events) && !options.devThing) {
+      if ((options.erc721Events || options.erc1155Events || options.renewalEvents) && !options.devThing) {
         await context.dispatch('syncENSEvents', parameter);
       }
 
@@ -1025,7 +1025,7 @@ const dataModule = {
         await context.dispatch('syncENSEventTxData', parameter);
       }
 
-      if ((options.erc721Events || options.erc1155Events || options.timestamps || options.txData) && !options.devThing) {
+      if ((options.erc721Events || options.erc1155Events || options.renewalEvents || options.timestamps || options.txData) && !options.devThing) {
         await context.dispatch('collateIt', parameter);
       }
 
@@ -1066,6 +1066,9 @@ const dataModule = {
       // ERC-1155 TransferBatch (index_topic_1 address operator, index_topic_2 address from, index_topic_3 address to, uint256[] ids, uint256[] values)
       // [ '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb', null, accountAs32Bytes, null ],
       // [ '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb', null, null, accountAs32Bytes ],
+
+      // ENS:ETH Registrar Controller NameRenewed (string name, index_topic_1 bytes32 label, uint256 cost, uint256 expires)
+      // [ '0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae', [tokenIds] ],
 
       // WETH Deposit (index_topic_1 address dst, uint256 wad)
       // 0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c
@@ -1217,12 +1220,38 @@ const dataModule = {
             ], null, null, selectedAddresses ];
             logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
             await processLogs(fromBlock, toBlock, section, logs);
+          } else if (section == 4) {
+
+            // const tokenId1 =
+
+            console.log("HERERER");
+            const tokenIds = [
+              "0x7A99FA9C2C05CDDE3DCE69EE671DC1ED477EE552132DB86A65BE33415F4FB0DC",
+              "0x7E5069231A915720535D223E9BE76081DF357B59D8675AE7439A5C0DF246390F",
+            ];
+
+            // const tokenIdDecimal = ethers.BigNumber.from(tokenIds).toString();
+            // console.log("tokenIdDecimal: " + tokenIdDecimal);
+            //
+            // const tokenIdHex = ethers.BigNumber.from(tokenIdDecimal).toHexString();
+            // console.log("tokenIdHex: " + tokenIdHex);
+
+            // topics = [ [
+            //   '0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae',
+            // ], tokenIds ];
+            topics = [ [
+              '0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae',
+            ], tokenIds ];
+            console.log("HERERER 1: " + JSON.stringify(topics, null, 2));
+            logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
+            console.log("HERERER 2");
+            console.log("logs: " + JSON.stringify(logs));
           }
           // const logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
         } catch (e) {
           const mid = parseInt((fromBlock + toBlock) / 2);
-          await getLogs(fromBlock, mid, section, selectedAddresses, processLogs);
-          await getLogs(parseInt(mid) + 1, toBlock, section, selectedAddresses, processLogs);
+          // await getLogs(fromBlock, mid, section, selectedAddresses, processLogs);
+          // await getLogs(parseInt(mid) + 1, toBlock, section, selectedAddresses, processLogs);
         }
       }
       logInfo("dataModule", "actions.syncENSEvents BEGIN");
@@ -1254,6 +1283,9 @@ const dataModule = {
           for (let section = 2; section < 4; section++) {
             await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
           }
+        }
+        if (parameter.renewalEvents) {
+          await getLogs(startBlock, parameter.blockNumber, 4, selectedAddresses, processLogs);
         }
       }
       logInfo("dataModule", "actions.syncENSEvents END");
