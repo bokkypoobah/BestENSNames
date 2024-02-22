@@ -1044,6 +1044,7 @@ const dataModule = {
       const db = new Dexie(context.state.db.name);
       db.version(context.state.db.version).stores(context.state.db.schemaDefinition);
       const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const erc1155Interface = new ethers.utils.Interface(ERC1155ABI);
 
       // ERC-20 & ERC-721 Transfer (index_topic_1 address from, index_topic_2 address to, index_topic_3 uint256 id)
       // [ '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', accountAs32Bytes, null ],
@@ -1131,6 +1132,20 @@ const dataModule = {
               const operator = ethers.utils.getAddress('0x' + log.topics[2].substring(26));
               approved = ethers.BigNumber.from(log.data).toString();
               eventRecord = { type: "ApprovalForAll", owner, operator, approved, eventType: "erc721" };
+            } else if (log.topics[0] == "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62") {
+              // ERC-1155 TransferSingle (index_topic_1 address operator, index_topic_2 address from, index_topic_3 address to, uint256 id, uint256 value)
+              const logData = erc1155Interface.parseLog(log);
+              const [operator, from, to, id, value] = logData.args;
+              tokenId = ethers.BigNumber.from(id).toString();
+              eventRecord = { type: "TransferSingle", operator, from, to, tokenId, value, eventType: "erc1155" };
+
+            } else if (log.topics[0] == "0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb") {
+              // ERC-1155 TransferBatch (index_topic_1 address operator, index_topic_2 address from, index_topic_3 address to, uint256[] ids, uint256[] values)
+              const logData = erc1155Interface.parseLog(log);
+              const [operator, from, to, ids, values] = logData.args;
+              const tokenIds = ids.map(e => ethers.BigNumber.from(e).toString());
+              eventRecord = { type: "TransferBatch", operator, from, to, tokenIds, values: values.map(e => e.toString()), eventType: "erc1155" };
+
             } else {
               console.log("NOT HANDLED: " + JSON.stringify(log));
             }
@@ -1182,11 +1197,17 @@ const dataModule = {
             logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
             await processLogs(fromBlock, toBlock, section, logs);
           } else if (section == 2) {
-            topics = [ ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62', '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'], null, selectedAddresses ];
+            topics = [ [
+              // '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62',
+              '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb',
+            ], null, selectedAddresses ];
             logs = await provider.getLogs({ address: ENS_ERC1155_ADDRESS, fromBlock, toBlock, topics });
             await processLogs(fromBlock, toBlock, section, logs);
           } else if (section == 3) {
-            topics = [ ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62', '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'], null, null, selectedAddresses ];
+            topics = [ [
+              // '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62',
+              '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb',
+            ], null, null, selectedAddresses ];
             logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
             await processLogs(fromBlock, toBlock, section, logs);
           }
@@ -1217,10 +1238,9 @@ const dataModule = {
       //   const latest = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).last();
       //   const startBlock = (parameter.incrementalSync && latest) ? parseInt(latest.blockNumber) + 1: 0;
         const startBlock = 0;
-        // for (let section = 0; section < 2; section++) {
-        //   await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
-        // }
-        await getLogs(startBlock, parameter.blockNumber, 3, selectedAddresses, processLogs);
+        for (let section = 0; section < 4; section++) {
+          await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
+        }
       }
       logInfo("dataModule", "actions.syncENSEvents END");
     },
@@ -1533,7 +1553,7 @@ const dataModule = {
 
       let total = 0;
       let completed = 0;
-      for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId])) {
+      for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId] || {})) {
         for (const [tokenId, tokenData] of Object.entries(contractData)) {
           if (tokenData.name) {
             completed++;
@@ -1546,7 +1566,7 @@ const dataModule = {
       context.commit('setSyncCompleted', completed);
 
       total = 0;
-      for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId])) {
+      for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId] || {})) {
         for (const [tokenId, tokenData] of Object.entries(contractData)) {
           if (!tokenData.name /*&& tokenId == "53835211818918528779359817553631021141919078878710948845228773628660104698081"*/) {
             // console.log(contract + "/" + tokenId + " = > " + JSON.stringify(tokenData));
