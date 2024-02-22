@@ -1013,7 +1013,7 @@ const dataModule = {
 
       const parameter = { chainId, coinbase, blockNumber, confirmations, cryptoCompareAPIKey, ...options };
 
-      if (options.events /*&& !options.devThing*/) {
+      if ((options.erc721Events || options.erc1155Events) && !options.devThing) {
         await context.dispatch('syncENSEvents', parameter);
       }
 
@@ -1025,7 +1025,7 @@ const dataModule = {
         await context.dispatch('syncENSEventTxData', parameter);
       }
 
-      if ((options.events || options.timestamps || options.txData) /*&& !options.devThing */) {
+      if ((options.erc721Events || options.erc1155Events || options.timestamps || options.txData) && !options.devThing) {
         await context.dispatch('collateIt', parameter);
       }
 
@@ -1245,8 +1245,15 @@ const dataModule = {
       //   const latest = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).last();
       //   const startBlock = (parameter.incrementalSync && latest) ? parseInt(latest.blockNumber) + 1: 0;
         const startBlock = 0;
-        for (let section = parameter.devThing ? 2 : 0; section < 4; section++) {
-          await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
+        if (parameter.erc721Events) {
+          for (let section = 0; section < 2; section++) {
+            await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
+          }
+        }
+        if (parameter.erc1155Events) {
+          for (let section = 2; section < 4; section++) {
+            await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
+          }
         }
       }
       logInfo("dataModule", "actions.syncENSEvents END");

@@ -4,7 +4,8 @@ const SyncOptions = {
       <b-modal ref="syncoptions" v-model="show" hide-footer body-bg-variant="light" size="sm">
         <template #modal-title>Sync Data</template>
 
-        <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.events" @input="saveSettings" v-b-popover.hover="'ENS Name Transfer Events'" class="ml-2 mt-1">Transfer Events</b-form-checkbox>
+        <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.erc721Events" @input="saveSettings" v-b-popover.hover="'ENS ERC-721 Transfer Events'" class="ml-2 mt-1">ENS Transfers</b-form-checkbox>
+        <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.erc1155Events" @input="saveSettings" v-b-popover.hover="'ENS ERC-1155 NameWrapper Transfer Events'" class="ml-2 mt-1">ENS NameWrapper Transfers</b-form-checkbox>
         <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.timestamps" @input="saveSettings" v-b-popover.hover="'ENS Name Transfer Event Timestamps'" class="ml-2 mt-1">Timestamps</b-form-checkbox>
         <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.txData" @input="saveSettings" v-b-popover.hover="'ENS Name Transfer Event Transaction Data'" class="ml-2 mt-1">Transaction Data</b-form-checkbox>
         <b-form-checkbox size="sm" switch :disabled="chainId != 1" v-model="settings.metadata" @input="saveSettings" v-b-popover.hover="'ENS Name Metadata'" class="ml-2 mt-1">Metadata</b-form-checkbox>
@@ -37,7 +38,8 @@ const SyncOptions = {
   data: function () {
     return {
       settings: {
-        events: true,
+        erc721Events: true,
+        erc1155Events: true,
         timestamps: true,
         txData: true,
         metadata: true,
@@ -90,7 +92,8 @@ const SyncOptions = {
     },
     syncNow() {
       store.dispatch('data/syncIt', {
-        events: this.settings.events,
+        erc721Events: this.settings.erc721Events,
+        erc1155Events: this.settings.erc1155Events,
         timestamps: this.settings.timestamps,
         txData: this.settings.txData,
         metadata: this.settings.metadata,
