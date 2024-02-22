@@ -434,41 +434,50 @@ const dataModule = {
       if (!(transfer.contract in state.tokens[transfer.chainId])) {
         Vue.set(state.tokens[transfer.chainId], transfer.contract, {});
       }
-      if (!(transfer.tokenId in state.tokens[transfer.chainId][transfer.contract])) {
-        Vue.set(state.tokens[transfer.chainId][transfer.contract], transfer.tokenId, {
-          name: null,
-          description: null,
-          created: null,
-          registration: null,
-          expiry: null,
-          attributes: {},
-          imageSource: null,
-          image: null,
-          owner: transfer.to,
-          tags: [],
-          history: [{
-            blockNumber: transfer.blockNumber,
-            logIndex: transfer.logIndex,
-            from: transfer.from,
-            to: transfer.to,
-          }],
-        });
-      } else {
-        const history = state.tokens[transfer.chainId][transfer.contract][transfer.tokenId].history;
-        const lastBlockNumber = history[history.length - 1].blockNumber;
-        const lastLogIndex = history[history.length - 1].logIndex;
-        if ((transfer.blockNumber > lastBlockNumber)  || ((transfer.blockNumber == lastBlockNumber) && (transfer.logInfo > lastLogIndex))) {
-          // console.log("lastBlockNumber: " + lastBlockNumber + " vs blockNumber: " + transfer.blockNumber);
-          // console.log("lastLogIndex: " + lastLogIndex + " vs logIndex: " + transfer.logIndex);
-          Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'owner', transfer.to);
-          history.push({
-            blockNumber: transfer.blockNumber,
-            logIndex: transfer.logIndex,
-            timestamp: transfer.timestamp,
-            from: transfer.from,
-            to: transfer.to,
+      let tokenIds = [];
+      if (transfer.eventType == "erc721" && transfer.type == "Transfer") {
+        tokenIds = [transfer.tokenId];
+      } else if (transfer.eventType == "erc1155" && transfer.type == "TransferSingle") {
+        tokenIds = [transfer.tokenId];
+      } else if (transfer.eventType == "erc1155" && transfer.type == "TransferBatch") {
+        tokenIds = transfer.tokenIds;
+      }
+      for (let tokenId of tokenIds) {
+        if (!(tokenId in state.tokens[transfer.chainId][transfer.contract])) {
+          Vue.set(state.tokens[transfer.chainId][transfer.contract], tokenId, {
+            name: null,
+            description: null,
+            created: null,
+            registration: null,
+            expiry: null,
+            attributes: {},
+            imageSource: null,
+            image: null,
+            owner: transfer.to,
+            tags: [],
+            history: [{
+              blockNumber: transfer.blockNumber,
+              logIndex: transfer.logIndex,
+              from: transfer.from,
+              to: transfer.to,
+            }],
           });
-          Vue.set(state.tokens[transfer.chainId][transfer.contract][transfer.tokenId], 'history', history);
+        } else {
+          const history = state.tokens[transfer.chainId][transfer.contract][tokenId].history;
+          const lastBlockNumber = history[history.length - 1].blockNumber;
+          const lastLogIndex = history[history.length - 1].logIndex;
+          if ((transfer.blockNumber > lastBlockNumber)  || ((transfer.blockNumber == lastBlockNumber) && (transfer.logInfo > lastLogIndex))) {
+            // console.log("lastBlockNumber: " + lastBlockNumber + " vs blockNumber: " + transfer.blockNumber);
+            // console.log("lastLogIndex: " + lastLogIndex + " vs logIndex: " + transfer.logIndex);
+            Vue.set(state.tokens[transfer.chainId][transfer.contract][tokenId], 'owner', transfer.to);
+            history.push({
+              blockNumber: transfer.blockNumber,
+              logIndex: transfer.logIndex,
+              from: transfer.from,
+              to: transfer.to,
+            });
+            Vue.set(state.tokens[transfer.chainId][transfer.contract][tokenId], 'history', history);
+          }
         }
       }
     },
@@ -1016,7 +1025,7 @@ const dataModule = {
         await context.dispatch('syncENSEventTxData', parameter);
       }
 
-      if ((options.events || options.timestamps || options.txData) && !options.devThing) {
+      if ((options.events || options.timestamps || options.txData) /*&& !options.devThing */) {
         await context.dispatch('collateIt', parameter);
       }
 
@@ -1366,11 +1375,11 @@ const dataModule = {
         let data = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).offset(rows).limit(context.state.DB_PROCESSING_BATCH_SIZE).toArray();
         logInfo("dataModule", "actions.collateIt - sales - data.length: " + data.length + ", first[0..1]: " + JSON.stringify(data.slice(0, 2).map(e => e.blockNumber + '.' + e.logIndex )));
         for (const transfer of data) {
-          if (transfer.eventType == "erc721" && transfer.type == "Transfer") {
-            if ((transfer.from in selectedAddressesMap) || (transfer.to in selectedAddressesMap)) {
-              context.commit('processTokenTransfer', transfer);
-            }
+          // if (transfer.eventType == "erc721" && transfer.type == "Transfer") {
+          if ((transfer.from in selectedAddressesMap) || (transfer.to in selectedAddressesMap)) {
+            context.commit('processTokenTransfer', transfer);
           }
+          // }
         }
         rows = parseInt(rows) + data.length;
         done = data.length < context.state.DB_PROCESSING_BATCH_SIZE;
