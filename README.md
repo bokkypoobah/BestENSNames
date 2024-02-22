@@ -13,3 +13,7 @@ Web3 UI [https://bokkypoobah.github.io/BestENSNames/](https://bokkypoobah.github
 #### Names
 
 <kbd><img src="images/SampleScreen_Names.png" /></kbd>
+
+#### ENS ERC-1155 NameWrapper Names
+
+<kbd><img src="images/SampleScreen_ERC1155_NameWrapper_Names.png" /></kbd>
