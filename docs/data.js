@@ -1606,13 +1606,20 @@ const dataModule = {
                 // console.log("createdRecord: " + JSON.stringify(createdRecord, null, 2));
                 created = createdRecord.length == 1 && createdRecord[0].value / 1000 || null;
 
-                const registrationRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Registration Date");
-                // console.log("registrationRecord: " + JSON.stringify(registrationRecord, null, 2));
-                registration = registrationRecord.length == 1 && registrationRecord[0].value / 1000 || null;
+                if (contract == ENS_ERC721_ADDRESS) {
+                  const registrationRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Registration Date");
+                  // console.log("registrationRecord: " + JSON.stringify(registrationRecord, null, 2));
+                  registration = registrationRecord.length == 1 && registrationRecord[0].value / 1000 || null;
 
-                const expiryRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Expiration Date");
-                // console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
-                expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
+                  const expiryRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Expiration Date");
+                  // console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
+                  expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
+                } else if (contract == ENS_ERC1155_ADDRESS) {
+                  const expiryRecord = metadataFileContent.attributes.filter(e => e.trait_type == "Namewrapper Expiry Date");
+                  // console.log("expiryRecord: " + JSON.stringify(expiryRecord, null, 2));
+                  expiry = expiryRecord.length == 1 && expiryRecord[0].value / 1000 || null;
+                }
+
               }
               const name = expired ? expiredName : (metadataFileContent.name || undefined);
               const description = expired ? ("Expired " + expiredName) : (metadataFileContent.description || undefined);
