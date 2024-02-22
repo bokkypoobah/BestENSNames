@@ -1163,6 +1163,7 @@ const dataModule = {
         logInfo("dataModule", "actions.syncENSEvents.getLogs: " + fromBlock + " - " + toBlock + " " + section);
         try {
           let topics = null;
+          let logs = null;
           if (section == 0) {
             topics = [[
                 '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
@@ -1174,11 +1175,14 @@ const dataModule = {
               selectedAddresses,
               null
             ];
+            logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
+            await processLogs(fromBlock, toBlock, section, logs);
           } else if (section == 1) {
             topics = [ ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'], null, selectedAddresses ];
+            logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
+            await processLogs(fromBlock, toBlock, section, logs);
           }
-          const logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
-          await processLogs(fromBlock, toBlock, section, logs);
+          // const logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
         } catch (e) {
           const mid = parseInt((fromBlock + toBlock) / 2);
           await getLogs(fromBlock, mid, section, selectedAddresses, processLogs);
@@ -1208,6 +1212,7 @@ const dataModule = {
         for (let section = 0; section < 2; section++) {
           await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
         }
+        // await getLogs(startBlock, parameter.blockNumber, 2, selectedAddresses, processLogs);
       }
       logInfo("dataModule", "actions.syncENSEvents END");
     },
