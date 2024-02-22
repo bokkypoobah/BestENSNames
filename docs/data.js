@@ -130,7 +130,7 @@ const Data = {
 const dataModule = {
   namespaced: true,
   state: {
-    DB_PROCESSING_BATCH_SIZE: 100,
+    DB_PROCESSING_BATCH_SIZE: 10000,
     ENS_GRACE_PERIOD: 7776000, // TODO: Retrieve from 0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85 GRACE_PERIOD
     collections: {
       "1": {
@@ -425,6 +425,9 @@ const dataModule = {
 
     processTokenTransfer(state, transfer) {
       // logInfo("dataModule", "mutations.processTokenTransfer transfer: " + JSON.stringify(transfer, null, 2));
+      // if (transfer.tokenId == "53835211818918528779359817553631021141919078878710948845228773628660104698081") {
+      //   console.log("blockNumber: " + transfer.blockNumber + ", from: " + transfer.from.substring(0, 20) + ", to: " + transfer.to.substring(0, 20) + ", tokenId: " + transfer.tokenId.substring(0, 30));
+      // }
       if (!(transfer.chainId in state.tokens)) {
         Vue.set(state.tokens, transfer.chainId, {});
       }
@@ -1046,6 +1049,14 @@ const dataModule = {
       // [ '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', accountAs32Bytes, null ],
       // [ '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', null, accountAs32Bytes ],
 
+      // ERC-1155 TransferSingle (index_topic_1 address operator, index_topic_2 address from, index_topic_3 address to, uint256 id, uint256 value)
+      // [ '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62', null, accountAs32Bytes, null ],
+      // [ '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62', null, null, accountAs32Bytes ],
+
+      // ERC-1155 TransferBatch (index_topic_1 address operator, index_topic_2 address from, index_topic_3 address to, uint256[] ids, uint256[] values)
+      // [ '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb', null, accountAs32Bytes, null ],
+      // [ '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb', null, null, accountAs32Bytes ],
+
       // WETH Deposit (index_topic_1 address dst, uint256 wad)
       // 0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c
       // WETH Withdrawal (index_topic_1 address src, uint256 wad)
@@ -1524,7 +1535,7 @@ const dataModule = {
       total = 0;
       for (const [contract, contractData] of Object.entries(context.state.tokens[parameter.chainId])) {
         for (const [tokenId, tokenData] of Object.entries(contractData)) {
-          if (!tokenData.name /*&& tokenId == "93564985964027200755770835742089172337336281912347672927492217815889691832461"*/) {
+          if (!tokenData.name /*&& tokenId == "53835211818918528779359817553631021141919078878710948845228773628660104698081"*/) {
             // console.log(contract + "/" + tokenId + " = > " + JSON.stringify(tokenData));
             const tokenURI = "https://metadata.ens.domains/mainnet/" + contract + "/" + tokenId;
             console.log(tokenURI);
