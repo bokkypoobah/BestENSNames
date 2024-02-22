@@ -1181,6 +1181,14 @@ const dataModule = {
             topics = [ ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'], null, selectedAddresses ];
             logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
             await processLogs(fromBlock, toBlock, section, logs);
+          } else if (section == 2) {
+            topics = [ ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62', '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'], null, selectedAddresses ];
+            logs = await provider.getLogs({ address: ENS_ERC1155_ADDRESS, fromBlock, toBlock, topics });
+            await processLogs(fromBlock, toBlock, section, logs);
+          } else if (section == 3) {
+            topics = [ ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62', '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'], null, null, selectedAddresses ];
+            logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
+            await processLogs(fromBlock, toBlock, section, logs);
           }
           // const logs = await provider.getLogs({ address: null, fromBlock, toBlock, topics });
         } catch (e) {
@@ -1209,10 +1217,10 @@ const dataModule = {
       //   const latest = await db.tokenEvents.where('[chainId+blockNumber+logIndex]').between([parameter.chainId, Dexie.minKey, Dexie.minKey],[parameter.chainId, Dexie.maxKey, Dexie.maxKey]).last();
       //   const startBlock = (parameter.incrementalSync && latest) ? parseInt(latest.blockNumber) + 1: 0;
         const startBlock = 0;
-        for (let section = 0; section < 2; section++) {
-          await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
-        }
-        // await getLogs(startBlock, parameter.blockNumber, 2, selectedAddresses, processLogs);
+        // for (let section = 0; section < 2; section++) {
+        //   await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
+        // }
+        await getLogs(startBlock, parameter.blockNumber, 3, selectedAddresses, processLogs);
       }
       logInfo("dataModule", "actions.syncENSEvents END");
     },
