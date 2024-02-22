@@ -1284,9 +1284,9 @@ const dataModule = {
             await getLogs(startBlock, parameter.blockNumber, section, selectedAddresses, processLogs);
           }
         }
-        if (parameter.renewalEvents) {
-          await getLogs(startBlock, parameter.blockNumber, 4, selectedAddresses, processLogs);
-        }
+        // if (parameter.renewalEvents) {
+        //   await getLogs(startBlock, parameter.blockNumber, 4, selectedAddresses, processLogs);
+        // }
       }
       logInfo("dataModule", "actions.syncENSEvents END");
     },
